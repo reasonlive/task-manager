@@ -99,9 +99,10 @@
                     <h5 class="card-title mb-0">Add Reply</h5>
                 </div>
                 <div class="card-body">
-                    <form action="/admin/tasks/{{ task.id }}/replies" method="POST">
+                    <form action="/admin/tasks/replies/add" method="POST">
                         <div class="mb-3">
                             <label for="replyText" class="form-label">Your Reply</label>
+                            <input type="hidden" id="taskId" name="taskId" value="{{ task.id }}">
                             <textarea class="form-control" id="replyText" name="text" rows="5"
                                       placeholder="Enter your reply here..." required></textarea>
                         </div>

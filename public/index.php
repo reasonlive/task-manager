@@ -47,6 +47,7 @@ $router->get('/admin/tasks/{id}', [TaskController::class, 'show']);
 $router->post('/admin/tasks', [TaskController::class, 'create']);
 $router->post('/admin/tasks/update', [TaskController::class, 'update']);
 $router->post('/admin/tasks/tags', [TaskController::class, 'manageTaskTags']);
+$router->post('/admin/tasks/replies/add', [TaskController::class, 'addReply']);
 // Users
 $router->get('/admin/users', [UserController::class, 'index']);
 $router->get('/admin/users/{id}', [UserController::class, 'show']);

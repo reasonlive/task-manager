@@ -146,13 +146,14 @@ class TaskController extends BaseController
      */
     public function addReply(): void
     {
-        $taskId = $this->request->get('task_id');
+        $taskId = $this->request->get('taskId');
         $text = $this->request->get('text');
-        $userId = 1; // ID текущего админа (из сессии)
+        $userId = $this->getSession()->getUserId();
+
+        error_log(json_encode($this->request->getBody()));
 
         if (empty($text)) {
             $this->redirect("/admin/tasks/{$taskId}?error=Reply text is required");
-            return;
         }
 
         $success = Model::getInstance(Reply::class)->create([
