@@ -29,6 +29,7 @@ class TaskController extends BaseController
             $user = $this->getUser();
             // Получаем параметры запроса
             $page = $this->request->get('page', 1);
+            $perPage = $this->request->get('per_page', 5);
             $status = $this->request->get('status', 'ALL');
             $userId = $user['id'];
             $sortField = $this->request->get('sort_field', 'id');
@@ -51,7 +52,6 @@ class TaskController extends BaseController
             }
 
             // Рассчитываем смещение для пагинации
-            $perPage = 5;
             $offset = ($page - 1) * $perPage;
 
             $tasks = $this->taskRepository->getFilteredTasks(

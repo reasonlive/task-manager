@@ -157,21 +157,21 @@ abstract class Model
             $i = 1;
             foreach ($data as $key => $value) {
                 if ($i < $count) {
-                    $sql .= " {$key} = :{$key} AND ";
+                    $sql .= "{$key} = ? AND ";
                 }
                 else {
-                    $sql .= " {$key} = :{$key}";
+                    $sql .= "{$key} = ?";
                 }
 
                 $i++;
             }
+
             $data = array_values($data);
         }
 
         $stmt = $this->db->query($sql, $data);
-        $stmt = $this->db->query($sql);
 
-        return (int) $stmt->fetch()['count'];
+        return $stmt->fetch()['count'] ?? 0;
     }
 
     protected function filterData(array $data): array
