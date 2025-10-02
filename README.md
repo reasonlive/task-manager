@@ -5,8 +5,8 @@ git clone https://github.com/reasonlive/task-manager.git
 cd task-manager && composer install
 cd ../frontend && npm install
 cd ../
-cd composer db:migrate
-cd composer db:seed
+composer db:migrate
+composer db:seed
 ```
 ### Запуск:
 ```
