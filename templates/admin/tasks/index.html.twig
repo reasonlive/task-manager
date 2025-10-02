@@ -1,0 +1,544 @@
+{% extends "/admin/base.html.twig" %}
+
+{% block title %}Tasks Management - Admin Panel{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Tasks Management</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                    <i class="bi bi-plus-circle"></i> Create Task
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped">
+            <thead class="table-dark">
+            <tr>
+                <th>
+                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                       class="text-white text-decoration-none d-flex align-items-center">
+                        ID
+                        {% if sort_field == 'id' %}
+                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>User</th>
+                <th>Tags</th>
+                <th>
+                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                       class="text-white text-decoration-none d-flex align-items-center">
+                        Created
+                        {% if sort_field == 'created_at' %}
+                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for task in tasks %}
+                <tr class="status-{{ task.status|lower|replace({'_': '-'}) }}">
+                    <td>{{ task.id }}</td>
+                    <td>
+                        <strong>{{ task.title }}</strong>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ task.description|slice(0, 50) }}{% if task.description|length > 50 %}...{% endif %}</small>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateTaskStatus({{ task.id }}, this.value)">
+                            <option value="TODO" {{ task.status == 'TODO' ? 'selected' : '' }}>TODO</option>
+                            <option value="IN_PROGRESS" {{ task.status == 'IN_PROGRESS' ? 'selected' : '' }}>IN PROGRESS</option>
+                            <option value="READY" {{ task.status == 'READY' ? 'selected' : '' }}>READY</option>
+                            <option value="FOR_REVIEW" {{ task.status == 'FOR_REVIEW' ? 'selected' : '' }}>FOR REVIEW</option>
+                            <option value="DONE" {{ task.status == 'DONE' ? 'selected' : '' }}>DONE</option>
+                        </select>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">{{ task.user_name }}</span>
+                    </td>
+                    <td>
+                        {% if task.tags %}
+                            {% set tag_list = task.tags|split(',') %}
+                            {% for tag in tag_list %}
+                                <span class="badge bg-secondary me-1">{{ tag }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">No tags</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ task.created_at|date('Y-m-d H:i') }}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/admin/tasks/{{ task.id }}" class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-warning"
+                                    data-bs-toggle="modal" data-bs-target="#editTaskModal"
+                                    data-task-id="{{ task.id }}"
+                                    data-task-title="{{ task.title }}"
+                                    data-task-description="{{ task.description }}"
+                                    data-task-user-id="{{ task.user_id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                                    data-bs-target="#tagsModal" data-task-id="{{ task.id }}" data-task-tags="{{ task.tags }}">
+                                <i class="bi bi-tags"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                        No tasks found
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Пагинация -->
+    {% if total_pages > 1 %}
+        <nav aria-label="Tasks pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ current_page == 1 ? 'disabled' : '' }}">
+                    <a class="page-link" href="?page={{ current_page - 1 }}{{ existing_filters }}{{ sort_query }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+
+                {% for page in 1..total_pages %}
+                    <li class="page-item {{ page == current_page ? 'active' : '' }}">
+                        <a class="page-link" href="?page={{ page }}{{ existing_filters }}{{ sort_query }}">{{ page }}</a>
+                    </li>
+                {% endfor %}
+
+                <li class="page-item {{ current_page == total_pages ? 'disabled' : '' }}">
+                    <a class="page-link" href="?page={{ current_page + 1 }}{{ existing_filters }}{{ sort_query }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    {% endif %}
+
+    <!-- Modal для создания задачи -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTaskForm">
+                        <div class="mb-3">
+                            <label for="createTaskTitle" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="createTaskTitle" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createTaskDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="createTaskDescription" name="description" rows="4"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createTaskUser" class="form-label">Assign to User</label>
+                            <select class="form-select" id="createTaskUser" name="user_id" required>
+                                <option value="">Select User</option>
+                                {% for user in available_users %}
+                                    <option value="{{ user.id }}">{{ user.name }} ({{ user.email }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createTaskStatus" class="form-label">Status</label>
+                            <select class="form-select" id="createTaskStatus" name="status">
+                                {% for status in statuses %}
+                                    <option value="{{ status }}" selected>{{ status }}</option>
+                                {% endfor %}
+
+                                <option value="IN_PROGRESS">IN PROGRESS</option>
+                                <option value="READY">READY</option>
+                                <option value="FOR_REVIEW">FOR REVIEW</option>
+                                <option value="DONE">DONE</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Initial Tags</label>
+                            <div>
+                                {% for tag in available_tags %}
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="createTag{{ tag }}" name="tags[]" value="{{ tag }}">
+                                        <label class="form-check-label" for="createTag{{ tag }}">{{ tag }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="createNewTask()">Create Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для редактирования задачи -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTaskForm">
+                        <input type="hidden" id="editTaskId" name="id">
+                        <div class="mb-3">
+                            <label for="editTaskTitle" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="editTaskTitle" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editTaskDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editTaskDescription" name="description" rows="4"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editTaskUser" class="form-label">Assign to User</label>
+                            <select class="form-select" id="editTaskUser" name="user_id" required>
+                                <option value="">Select User</option>
+                                {% for user in available_users %}
+                                    <option value="{{ user.id }}">{{ user.name }} ({{ user.email }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveTaskChanges()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для управления тегами -->
+    <div class="modal fade" id="tagsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Tags</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="currentTaskId">
+                    <h6>Available Tags:</h6>
+                    <div id="tagsList">
+                        <!-- Теги будут загружены динамически -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для фильтрации -->
+    <div class="modal fade" id="filterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Filter Tasks</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="GET" action="/admin/tasks" id="filterForm">
+                        <div class="mb-3">
+                            <label for="statusFilter" class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="TODO" {{ current_filters.status == 'TODO' ? 'selected' : '' }}>TODO</option>
+                                <option value="IN_PROGRESS" {{ current_filters.status == 'IN_PROGRESS' ? 'selected' : '' }}>IN PROGRESS</option>
+                                <option value="READY" {{ current_filters.status == 'READY' ? 'selected' : '' }}>READY</option>
+                                <option value="FOR_REVIEW" {{ current_filters.status == 'FOR_REVIEW' ? 'selected' : '' }}>FOR REVIEW</option>
+                                <option value="DONE" {{ current_filters.status == 'DONE' ? 'selected' : '' }}>DONE</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tagFilter" class="form-label">Tag</label>
+                            <select class="form-select" id="tagFilter" name="tag">
+                                <option value="">All Tags</option>
+                                {% for tag in available_tags %}
+                                    <option value="{{ tag }}" {{ current_filters.tag == tag ? 'selected' : '' }}>{{ tag }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="userFilter" class="form-label">User</label>
+                            <select class="form-select" id="userFilter" name="user_id">
+                                <option value="">All Users</option>
+                                {% for user in available_users %}
+                                    <option value="{{ user.id }}" {{ current_filters.user_id == user.id ? 'selected' : '' }}>{{ user.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Скрытые поля для сохранения сортировки -->
+                        {% if sort_field %}
+                            <input type="hidden" name="sort" value="{{ sort_field }}">
+                        {% endif %}
+                        {% if sort_order %}
+                            <input type="hidden" name="order" value="{{ sort_order }}">
+                        {% endif %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                            <a href="/admin/tasks" class="btn btn-outline-secondary">Clear Filters</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Очистка формы создания задачи при открытии модального окна
+        document.getElementById('createTaskModal').addEventListener('show.bs.modal', function () {
+            document.getElementById('createTaskForm').reset();
+            document.getElementById('createTaskStatus').value = 'TODO';
+        });
+
+        // Загрузка данных задачи при открытии модального окна редактирования
+        document.getElementById('editTaskModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const taskId = button.getAttribute('data-task-id');
+            const taskTitle = button.getAttribute('data-task-title');
+            const taskDescription = button.getAttribute('data-task-description');
+            const taskUserId = button.getAttribute('data-task-user-id');
+
+            document.getElementById('editTaskId').value = taskId;
+            document.getElementById('editTaskTitle').value = taskTitle;
+            document.getElementById('editTaskDescription').value = taskDescription;
+            document.getElementById('editTaskUser').value = taskUserId;
+        });
+
+        // Загрузка тегов при открытии модального окна
+        document.getElementById('tagsModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const taskId = button.getAttribute('data-task-id');
+            const currentTags = button.getAttribute('data-task-tags')?.split(',') || [];
+
+            document.getElementById('currentTaskId').value = taskId;
+
+            const tagsList = document.getElementById('tagsList');
+            const availableTags = {{ available_tags|json_encode|raw }};
+
+            tagsList.innerHTML = '';
+
+            availableTags.forEach(tag => {
+                const isActive = currentTags.includes(tag.name);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `btn ${isActive ? 'btn-primary' : 'btn-outline-primary'} me-2 mb-2`;
+                button.textContent = tag.name;
+                button.onclick = function() {
+                    const action = isActive ? 'remove' : 'add';
+                    toggleTaskTag(taskId, tag.name, action);
+                };
+                tagsList.appendChild(button);
+            });
+        });
+
+        // Автозаполнение фильтров в модальном окне
+        document.getElementById('filterModal').addEventListener('show.bs.modal', function () {
+            // Форма уже заполнена через Twig
+        });
+
+        function createNewTask() {
+            const formData = new FormData(document.getElementById('createTaskForm'));
+            const taskData = Object.fromEntries(formData);
+
+            // Собираем выбранные теги
+            const selectedTags = [];
+            document.querySelectorAll('#createTaskForm input[name="tags[]"]:checked').forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+            taskData.tags = selectedTags.join(',');
+
+            fetch('/admin/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Task created successfully', 'success');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
+                        modal.hide();
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification(data.message || 'Error creating task', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error creating task', 'error');
+                });
+        }
+
+        function updateTaskStatus(taskId, newStatus) {
+            fetch(`/admin/tasks/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: taskId, status: newStatus })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Status updated successfully', 'success');
+                        // Обновляем класс строки для подсветки статуса
+                        const row = document.querySelector(`tr[class*="status-"]:has(td:first-child:contains("${taskId}"))`);
+                        if (row) {
+                            row.className = row.className.replace(/status-[^\s]+/, `status-${newStatus.toLowerCase().replace('_', '-')}`);
+                        }
+                    } else {
+                        showNotification('Error updating status', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating status', 'error');
+                });
+        }
+
+        function toggleTaskTag(taskId, tag, action) {
+            fetch(`/admin/tasks/tags`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    task_id: taskId,
+                    tag: tag,
+                    action: action
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    //console.log(data);return;
+                    if (data.success) {
+                        showNotification(`Tag ${action === 'add' ? 'added' : 'removed'} successfully`, 'success');
+                        // Закрываем модальное окно и обновляем страницу
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('tagsModal'));
+                        modal.hide();
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification('Error updating tags', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating tags', 'error');
+                });
+        }
+
+        function saveTaskChanges() {
+            const formData = new FormData(document.getElementById('editTaskForm'));
+            const taskData = Object.fromEntries(formData);
+
+            fetch(`/admin/tasks/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Task updated successfully', 'success');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editTaskModal'));
+                        modal.hide();
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification('Error updating task', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating task', 'error');
+                });
+        }
+
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+    </script>
+
+    <style>
+        .status-todo {
+            background-color: rgba(108, 117, 125, 0.05);
+        }
+        .status-in-progress {
+            background-color: rgba(255, 193, 7, 0.05);
+        }
+        .status-ready {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+        .status-for-review {
+            background-color: rgba(111, 66, 193, 0.05);
+        }
+        .status-done {
+            background-color: rgba(25, 135, 84, 0.05);
+        }
+        .table th a:hover {
+            color: #fff !important;
+            text-decoration: underline !important;
+        }
+        .pagination {
+            margin-top: 1rem;
+        }
+    </style>
+{% endblock %}

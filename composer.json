@@ -1,0 +1,34 @@
+{
+  "name": "app/task-manager",
+  "description": "Task Management Application",
+  "type": "project",
+  "scripts": {
+    "serve": "php -S localhost:8000 -t public",
+    "db:migrate": [
+      "echo 'Importing database...'",
+      "php commands/migrate.php"
+    ],
+    "db:seed": [
+      "echo 'Filling database...'",
+      "php commands/seed.php"
+    ]
+  },
+  "require": {
+    "php": ">=8.3",
+    "twig/twig": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "reasonlive",
+      "email": "artemiy.webdev@gmail.com"
+    }
+  ],
+  "config": {
+    "optimize-autoloader": true
+  }
+}

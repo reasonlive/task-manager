@@ -1,0 +1,426 @@
+{% extends "/admin/base.html.twig" %}
+
+{% block title %}Users Management - Admin Panel{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Users Management</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                    <i class="bi bi-plus-circle"></i> Create User
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped">
+            <thead class="table-dark">
+            <tr>
+                <th>
+                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                       class="text-white text-decoration-none d-flex align-items-center">
+                        ID
+                        {% if sort_field == 'id' %}
+                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>
+                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                       class="text-white text-decoration-none d-flex align-items-center">
+                        Created
+                        {% if sort_field == 'created_at' %}
+                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+                <tr class="status-{{ user.is_active ? 'active' : 'inactive' }}">
+                    <td>{{ user.id }}</td>
+                    <td>
+                        <strong>{{ user.email }}</strong>
+                    </td>
+                    <td>{{ user.name }}</td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateUserRole({{ user.id }}, this.value)">
+                            <option value="USER" {{ user.role == 'USER' ? 'selected' : '' }}>USER</option>
+                            <option value="ADMIN" {{ user.role == 'ADMIN' ? 'selected' : '' }}>ADMIN</option>
+                            <option value="MODERATOR" {{ user.role == 'MODERATOR' ? 'selected' : '' }}>MODERATOR</option>
+                        </select>
+                    </td>
+                    <td>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox"
+                                   id="activeSwitch{{ user.id }}"
+                                    {{ user.is_active ? 'checked' : '' }}
+                                   onchange="toggleUserStatus({{ user.id }}, this.checked)">
+                            <label class="form-check-label" for="activeSwitch{{ user.id }}">
+                                {{ user.is_active ? 'Active' : 'Inactive' }}
+                            </label>
+                        </div>
+                    </td>
+                    <td>
+                        <small>{{ user.created_at|date('Y-m-d H:i') }}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/admin/users/{{ user.id }}" class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-warning"
+                                    data-bs-toggle="modal" data-bs-target="#editUserModal"
+                                    data-user-id="{{ user.id }}"
+                                    data-user-email="{{ user.email }}"
+                                    data-user-name="{{ user.name }}"
+                                    data-user-role="{{ user.role }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-people display-4 d-block mb-2"></i>
+                        No users found
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal для создания пользователя -->
+    <div class="modal fade" id="createUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createUserForm">
+                        <div class="mb-3">
+                            <label for="createUserEmail" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="createUserEmail" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createUserName" class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="createUserName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createUserPassword" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="createUserPassword" name="password" required>
+                            <div class="form-text">Password must be at least 6 characters long</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createUserPasswordConfirm" class="form-label">Confirm Password *</label>
+                            <input type="password" class="form-control" id="createUserPasswordConfirm" name="password_confirm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="createUserRole" class="form-label">Role</label>
+                            <select class="form-select" id="createUserRole" name="role">
+                                <option value="USER" selected>USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="MODERATOR">MODERATOR</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="createUserActive" name="is_active" checked>
+                            <label class="form-check-label" for="createUserActive">Active user</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="createNewUser()">Create User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для редактирования пользователя -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserId" name="id">
+                        <div class="mb-3">
+                            <label for="editUserEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editUserEmail" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editUserName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="editUserName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editUserRole" class="form-label">Role</label>
+                            <select class="form-select" id="editUserRole" name="role">
+                                <option value="USER">USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="MODERATOR">MODERATOR</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUserChanges()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal для фильтрации -->
+    <div class="modal fade" id="filterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Filter Users</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="GET" action="/admin/users">
+                        <div class="mb-3">
+                            <label for="roleFilter" class="form-label">Role</label>
+                            <select class="form-select" id="roleFilter" name="role">
+                                <option value="">All Roles</option>
+                                <option value="USER">USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="MODERATOR">MODERATOR</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="statusFilter" class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter" name="is_active">
+                                <option value="">All Statuses</option>
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Очистка формы создания пользователя при открытии модального окна
+        document.getElementById('createUserModal').addEventListener('show.bs.modal', function () {
+            document.getElementById('createUserForm').reset();
+            document.getElementById('createUserRole').value = 'USER';
+            document.getElementById('createUserActive').checked = true;
+        });
+
+        // Загрузка данных пользователя при открытии модального окна редактирования
+        document.getElementById('editUserModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const userId = button.getAttribute('data-user-id');
+            const userEmail = button.getAttribute('data-user-email');
+            const userName = button.getAttribute('data-user-name');
+            const userRole = button.getAttribute('data-user-role');
+
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUserEmail').value = userEmail;
+            document.getElementById('editUserName').value = userName;
+            document.getElementById('editUserRole').value = userRole;
+        });
+
+        function createNewUser() {
+            const formData = new FormData(document.getElementById('createUserForm'));
+            const userData = Object.fromEntries(formData);
+
+            // Валидация пароля
+            if (userData.password !== userData.password_confirm) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+
+            if (userData.password.length < 6) {
+                showNotification('Password must be at least 6 characters long', 'error');
+                return;
+            }
+
+            // Удаляем подтверждение пароля перед отправкой
+            delete userData.password_confirm;
+
+            fetch('/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    //console.log(data)
+                    if (data.success) {
+                        showNotification('User created successfully', 'success');
+                        // Закрываем модальное окно
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+                        modal.hide();
+                        // Перезагружаем страницу для обновления данных
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification(data.message || 'Error creating user', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error creating user', 'error');
+                });
+        }
+
+        function updateUserRole(userId, newRole) {
+            fetch(`/admin/users/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: userId, role: newRole })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    //console.log(data);
+                    if (data.success) {
+                        showNotification('Role updated successfully', 'success');
+                    } else {
+                        showNotification('Error updating role', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating role', 'error');
+                });
+        }
+
+        function toggleUserStatus(userId, isActive) {
+            fetch(`/admin/users/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: userId, is_active: isActive })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const statusText = isActive ? 'activated' : 'deactivated';
+                        showNotification(`User ${statusText} successfully`, 'success');
+
+                        // Обновляем текст статуса
+                        const label = document.querySelector(`label[for="activeSwitch${userId}"]`);
+                        label.textContent = isActive ? 'Active' : 'Inactive';
+                    } else {
+                        showNotification('Error updating user status', 'error');
+                        // Возвращаем переключатель в исходное состояние
+                        const checkbox = document.getElementById(`activeSwitch${userId}`);
+                        checkbox.checked = !isActive;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating user status', 'error');
+                    // Возвращаем переключатель в исходное состояние
+                    const checkbox = document.getElementById(`activeSwitch${userId}`);
+                    checkbox.checked = !isActive;
+                });
+        }
+
+        function saveUserChanges() {
+            const formData = new FormData(document.getElementById('editUserForm'));
+            const userData = Object.fromEntries(formData);
+
+            fetch(`/admin/users/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('User updated successfully', 'success');
+                        // Закрываем модальное окно
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                        modal.hide();
+                        // Перезагружаем страницу для обновления данных
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification('Error updating user', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error updating user', 'error');
+                });
+        }
+
+        function showNotification(message, type) {
+            // Простая реализация уведомления - можно заменить на более продвинутую
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+    </script>
+
+    <style>
+        .status-active {
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+        .status-inactive {
+            background-color: rgba(108, 117, 125, 0.05);
+        }
+        .form-switch {
+            min-height: auto;
+            padding-left: 2.5em;
+        }
+        .form-switch .form-check-input {
+            margin-left: -2.5em;
+        }
+    </style>
+{% endblock %}

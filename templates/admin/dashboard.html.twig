@@ -1,0 +1,340 @@
+{% extends "/admin/base.html.twig" %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Dashboard</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <!-- Статистические карточки -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Tasks
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_tasks }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-list-task fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed Tasks
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.completed_tasks }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                In Progress
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.in_progress_tasks }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-arrow-repeat fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total Users
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_users }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-people fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- График статистики по задачам -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Tasks Overview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="tasksChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статус задач -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Tasks by Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="statusPieChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        {% for status in stats.status_distribution %}
+                            <span class="mr-2">
+                                <i class="bi bi-circle-fill" style="color: {{ status.color }}"></i> {{ status.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние задачи -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Tasks</h6>
+                    <a href="/admin/tasks" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>User</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for task in recent_tasks %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ task.title }}</strong>
+                                        {% if task.tags %}
+                                            <br>
+                                            <small>
+                                                {% set tag_list = task.tags|split(',') %}
+                                                {% for tag in tag_list %}
+                                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                                {% endfor %}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ task.status_badge }}">{{ task.status }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ task.user_name }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ task.created_at|date('Y-m-d H:i') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/admin/tasks/{{ task.id }}" class="btn btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                                        No recent tasks
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <a href="/admin/tasks/create" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-plus-circle me-2"></i>New Task
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="/admin/users" class="btn btn-success btn-lg w-100">
+                                <i class="bi bi-people me-2"></i>Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="/admin/reports" class="btn btn-info btn-lg w-100">
+                                <i class="bi bi-graph-up me-2"></i>Reports
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="/admin/settings" class="btn btn-warning btn-lg w-100">
+                                <i class="bi bi-gear me-2"></i>Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function refreshDashboard() {
+            location.reload();
+        }
+
+        // Инициализация графиков
+        document.addEventListener('DOMContentLoaded', function() {
+            // Linear Chart - Tasks Overview
+            const tasksCtx = document.getElementById('tasksChart').getContext('2d');
+            const tasksChart = new Chart(tasksCtx, {
+                type: 'line',
+                data: {
+                    labels: {{ stats.chart_labels|raw }},
+                    datasets: [{
+                        label: 'Tasks Created',
+                        data: {{ stats.tasks_created_data|raw }},
+                        borderColor: '#4e73df',
+                        backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Pie Chart - Tasks by Status
+            const pieCtx = document.getElementById('statusPieChart').getContext('2d');
+            const pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ stats.pie_labels|raw }},
+                    datasets: [{
+                        data: {{ stats.pie_data|raw }},
+                        backgroundColor: {{ stats.pie_colors|raw }},
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(refreshDashboard, 300000);
+    </script>
+
+    <style>
+        .card {
+            border: 1px solid #e3e6f0;
+            border-radius: 0.35rem;
+        }
+        .border-left-primary {
+            border-left: 0.25rem solid #4e73df !important;
+        }
+        .border-left-success {
+            border-left: 0.25rem solid #1cc88a !important;
+        }
+        .border-left-warning {
+            border-left: 0.25rem solid #f6c23e !important;
+        }
+        .border-left-info {
+            border-left: 0.25rem solid #36b9cc !important;
+        }
+        .text-xs {
+            font-size: 0.7rem;
+        }
+        .text-gray-800 {
+            color: #5a5c69 !important;
+        }
+        .text-gray-300 {
+            color: #dddfeb !important;
+        }
+        .shadow {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+        }
+        .chart-area {
+            position: relative;
+            height: 20rem;
+            width: 100%;
+        }
+        .chart-pie {
+            position: relative;
+            height: 15rem;
+            width: 100%;
+        }
+    </style>
+{% endblock %}

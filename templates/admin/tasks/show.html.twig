@@ -1,0 +1,141 @@
+{% extends "/admin/base.html.twig" %}
+
+{% block title %}Task #{{ task.id }} - Admin Panel{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Task #{{ task.id }}: {{ task.title }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="/admin/tasks" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Tasks
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Информация о задаче -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Task Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Title:</strong></div>
+                        <div class="col-sm-9">{{ task.title }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Description:</strong></div>
+                        <div class="col-sm-9">{{ task.description }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Status:</strong></div>
+                        <div class="col-sm-9">
+                            <select class="form-select" onchange="updateTaskStatus({{ task.id }}, this.value)">
+                                <option value="TODO" {{ task.status == 'TODO' ? 'selected' : '' }}>TODO</option>
+                                <option value="IN_PROGRESS" {{ task.status == 'IN_PROGRESS' ? 'selected' : '' }}>IN PROGRESS</option>
+                                <option value="READY" {{ task.status == 'READY' ? 'selected' : '' }}>READY</option>
+                                <option value="FOR_REVIEW" {{ task.status == 'FOR_REVIEW' ? 'selected' : '' }}>FOR REVIEW</option>
+                                <option value="DONE" {{ task.status == 'DONE' ? 'selected' : '' }}>DONE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>User:</strong></div>
+                        <div class="col-sm-9">
+                            <span class="badge bg-info">{{ task.user_name }}</span>
+                            <small class="text-muted">({{ task.user_email }})</small>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Tags:</strong></div>
+                        <div class="col-sm-9">
+                            {% if task.tags %}
+                                {% set tag_list = task.tags|split(',') %}
+                                {% for tag in tag_list %}
+                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">No tags</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-3"><strong>Created:</strong></div>
+                        <div class="col-sm-9">{{ task.created_at|date('Y-m-d H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ответы -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Replies</h5>
+                </div>
+                <div class="card-body">
+                    {% if replies %}
+                        <div class="list-group list-group-flush">
+                            {% for reply in replies %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ reply.user_name }}</h6>
+                                        <small>{{ reply.created_at|date('Y-m-d H:i') }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ reply.text }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No replies yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Добавление ответа -->
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">Add Reply</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/admin/tasks/{{ task.id }}/replies" method="POST">
+                        <div class="mb-3">
+                            <label for="replyText" class="form-label">Your Reply</label>
+                            <textarea class="form-control" id="replyText" name="text" rows="5"
+                                      placeholder="Enter your reply here..." required></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">Send Reply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Управление тегами -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">Manage Tags</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% set current_tags = task.tags ? task.tags|split(',') : [] %}
+                        {% for tag in tags %}
+                            {% if tag.name in current_tags %}
+                                <button type="button" class="btn btn-primary"
+                                        onclick="toggleTaskTag({{ task.id }}, '{{ tag.name }}', 'remove')">
+                                    Remove "{{ tag }}" tag
+                                </button>
+                            {% else %}
+                                <button type="button" class="btn btn-outline-primary"
+                                        onclick="toggleTaskTag({{ task.id }}, '{{ tag.name }}', 'add')">
+                                    Add "{{ tag.name|upper }}" tag
+                                </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
