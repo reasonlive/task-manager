@@ -112,14 +112,13 @@ class TaskController extends BaseController
      */
     public function manageTaskTags(): void
     {
-        $id = $this->request->get('task_id');
+        $id = $this->request->get('taskId');
         $tag = $this->request->get('tag');
         $action = $this->request->get('action');
-
+        //error_log(json_encode($this->request->getBody()));
 
         if (!$tag = Tag::getInstance()->findByName($tag)) {
             $this->json(['success' => false, 'error' => 'Tag not found'], 404);
-            return;
         }
 
         $task = Task::getInstance();

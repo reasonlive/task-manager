@@ -355,9 +355,8 @@
             const currentTags = button.getAttribute('data-task-tags')?.split(',') || [];
 
             document.getElementById('currentTaskId').value = taskId;
-
             const tagsList = document.getElementById('tagsList');
-            const availableTags = {{ available_tags|json_encode|raw }};
+            let availableTags = {{ available_tags|json_encode|raw }};
 
             tagsList.innerHTML = '';
 
@@ -415,63 +414,7 @@
                 });
         }
 
-        function updateTaskStatus(taskId, newStatus) {
-            fetch(`/admin/tasks/update`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: taskId, status: newStatus })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification('Status updated successfully', 'success');
-                        // Обновляем класс строки для подсветки статуса
-                        const row = document.querySelector(`tr[class*="status-"]:has(td:first-child:contains("${taskId}"))`);
-                        if (row) {
-                            row.className = row.className.replace(/status-[^\s]+/, `status-${newStatus.toLowerCase().replace('_', '-')}`);
-                        }
-                    } else {
-                        showNotification('Error updating status', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('Error updating status', 'error');
-                });
-        }
 
-        function toggleTaskTag(taskId, tag, action) {
-            fetch(`/admin/tasks/tags`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    task_id: taskId,
-                    tag: tag,
-                    action: action
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    //console.log(data);return;
-                    if (data.success) {
-                        showNotification(`Tag ${action === 'add' ? 'added' : 'removed'} successfully`, 'success');
-                        // Закрываем модальное окно и обновляем страницу
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('tagsModal'));
-                        modal.hide();
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showNotification('Error updating tags', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('Error updating tags', 'error');
-                });
-        }
 
         function saveTaskChanges() {
             const formData = new FormData(document.getElementById('editTaskForm'));

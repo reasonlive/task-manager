@@ -110,20 +110,21 @@
     }
 
     // Функция для добавления/удаления тега
-    function toggleTaskTag(taskId, tagId, action) {
+    function toggleTaskTag(taskId, tag, action) {
         fetch(`/admin/tasks/tags`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ tag_id: tagId, action: action })
+            body: JSON.stringify({ taskId, tag, action })
         })
             .then(response => response.json())
             .then(data => {
+                //console.log(data);return;
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Error updating tags: ' + data.message);
+                    alert('Error updating tags: ' + data.error);
                 }
             })
             .catch(error => {
