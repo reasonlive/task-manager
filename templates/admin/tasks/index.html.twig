@@ -183,11 +183,6 @@
                                 {% for status in statuses %}
                                     <option value="{{ status }}" selected>{{ status }}</option>
                                 {% endfor %}
-
-                                <option value="IN_PROGRESS">IN PROGRESS</option>
-                                <option value="READY">READY</option>
-                                <option value="FOR_REVIEW">FOR REVIEW</option>
-                                <option value="DONE">DONE</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -195,8 +190,8 @@
                             <div>
                                 {% for tag in available_tags %}
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="createTag{{ tag }}" name="tags[]" value="{{ tag }}">
-                                        <label class="form-check-label" for="createTag{{ tag }}">{{ tag }}</label>
+                                        <input class="form-check-input" type="checkbox" id="createTag{{ tag.name }}" name="tags[]" value="{{ tag.name }}">
+                                        <label class="form-check-label" for="createTag{{ tag.name }}">{{ tag.name }}</label>
                                     </div>
                                 {% endfor %}
                             </div>

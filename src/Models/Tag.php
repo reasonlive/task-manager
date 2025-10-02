@@ -18,10 +18,21 @@ class Tag extends Model
         return $this->firstWhere('name', $name);
     }
 
-    public function getAllNames(): array
+    public function getNames(): array
     {
         $sql = "SELECT name FROM tags";
-        return $this->db->query($sql)->fetchAll();
+        return array_column($this->db->query($sql)->fetchAll(), 'name');
+    }
+
+    public function getIds(array $names = []): array
+    {
+        $sql = "SELECT id FROM tags";
+
+        if (!empty($names)) {
+            $sql .= " WHERE name IN ('" . implode("','", $names) . "')";
+        }
+
+        return array_column($this->db->query($sql)->fetchAll(), 'id');
     }
 
     public function getPopularTags(int $limit = 10): array

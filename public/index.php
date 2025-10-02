@@ -21,6 +21,7 @@ $router
     ->setMiddleware(new \App\Middleware\ApiAccessMiddleware())
     ->setMiddleware(new \App\Middleware\CorsMiddleware());
 
+
 // // Routes
 // API
 $router->post('/api/register', [ApiAuth::class, 'register']);

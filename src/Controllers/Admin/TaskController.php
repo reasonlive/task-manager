@@ -13,6 +13,13 @@ use App\Models\User;
 class TaskController extends BaseController
 {
     public bool $admin = true;
+    private Task $taskRepository;
+
+    public function __construct() {
+        parent::__construct();
+        $this->taskRepository = Task::getInstance();
+    }
+
     /**
      * GET /admin/tasks
      * @return void
@@ -63,17 +70,32 @@ class TaskController extends BaseController
     }
 
     /**
-     * POST /admin/tags
+     * POST /admin/tasks
      * @return void
      */
     public function create(): void
     {
         try {
             $body = $this->request->getBody();
-            $id = Model::getInstance(Tag::class)->create($body);
+
+            $id = $this->taskRepository->create([
+                'title' => $body['title'],
+                'description' => $body['description'],
+                'status' => $body['status'],
+                'user_id' => $body['user_id']
+            ]);
             if ($id > 0) {
                 $this->json(['success' => true, 'Task created successfully']);
             }
+
+            if (isset($body['tags']) && count($body['tags'])) {
+                $ids = Tag::getInstance()->getIds($body['tags']);
+
+                foreach ($ids as $tagId) {
+                    $this->taskRepository->addTag($id, $tagId);
+                }
+            }
+
         } catch (\Exception $e) {
             $this->response
                 ->setStatusCode(500)
