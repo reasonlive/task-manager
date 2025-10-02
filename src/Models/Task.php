@@ -70,6 +70,8 @@ class Task extends Model
 
     public function getFilteredTasks(
         int $userId,
+        ?int $id,
+        ?string $title,
         string $status,
         string $sortBy,
         string $sortOrder,
@@ -77,7 +79,7 @@ class Task extends Model
         int $offset
     ): array
     {
-        $sql = "SELECT t.id, t.title, t.description, t.created_at, t.status, t.user_id, u.name as user_name FROM tasks t LEFT JOIN users u ON t.user_id = u.id";
+        $sql = "SELECT t.*, u.name as user_name FROM tasks t LEFT JOIN users u ON t.user_id = u.id";
 
         //return $this->db->query($sql)->fetchAll();
         $whereConditions = [];
@@ -86,6 +88,16 @@ class Task extends Model
         if ($userId) {
             $whereConditions[] = "t.user_id = ?";
             $params[] = $userId;
+        }
+
+        if ($id) {
+            $whereConditions[] = "t.id = ?";
+            $params[] = $id;
+        }
+
+        if ($title) {
+            $whereConditions[] = "t.title LIKE ?";
+            $params[] = '%' . $title . '%';
         }
 
         if ($status && $status !== 'ALL') {

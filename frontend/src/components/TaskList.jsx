@@ -24,7 +24,7 @@ const TaskList = () => {
     const [filters, setFilters] = React.useState({
         title: '',
         status: '',
-        user_id: '',
+        id: '',
     })
 
     const fetchTasks = async (page = pagination.current, pageSize = pagination.pageSize) => {
@@ -44,8 +44,8 @@ const TaskList = () => {
             if (filters.status) {
                 params.status = filters.status
             }
-            if (filters.user_id) {
-                params.user_id = filters.user_id
+            if (filters.id) {
+                params.id = filters.id
             }
 
             const response = await tasksAPI.getTasks(params)
@@ -93,14 +93,14 @@ const TaskList = () => {
     }
 
     const handleUserIdChange = (e) => {
-        handleFilterChange('user_id', e.target.value)
+        handleFilterChange('id', e.target.value)
     }
 
     const clearFilters = () => {
         setFilters({
             title: '',
             status: '',
-            user_id: '',
+            id: '',
         })
     }
 
@@ -141,9 +141,11 @@ const TaskList = () => {
             sorter: true,
             render: (status) => {
                 const statusMap = {
-                    pending: 'В ожидании',
+                    todo: 'В ожидании',
                     in_progress: 'В работе',
-                    completed: 'Завершена',
+                    ready: 'Готово',
+                    for_review: 'На проверке',
+                    done: 'Завершена',
                 }
                 return statusMap[status] || status
             },
@@ -210,17 +212,19 @@ const TaskList = () => {
                             onChange={handleStatusChange}
                             value={filters.status || undefined}
                         >
-                            <Option value="pending">В ожидании</Option>
+                            <Option value="todo">В ожидании</Option>
                             <Option value="in_progress">В работе</Option>
-                            <Option value="completed">Завершена</Option>
+                            <Option value="ready">Готово</Option>
+                            <Option value="for_review">На проверке</Option>
+                            <Option value="done">Завершена</Option>
                         </Select>
 
                         <Search
-                            placeholder="ID пользователя"
+                            placeholder="ID задачи"
                             allowClear
-                            onSearch={(value) => handleFilterChange('user_id', value)}
+                            onSearch={(value) => handleFilterChange('id', value)}
                             style={{ width: 150 }}
-                            defaultValue={filters.user_id}
+                            defaultValue={filters.id}
                         />
 
                         <Button onClick={clearFilters}>

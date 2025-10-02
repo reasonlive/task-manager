@@ -30,6 +30,8 @@ class TaskController extends BaseController
             // Получаем параметры запроса
             $page = $this->request->get('page', 1);
             $perPage = $this->request->get('per_page', 5);
+            $id = $this->request->get('id');
+            $title = $this->request->get('title');
             $status = $this->request->get('status', 'ALL');
             $userId = $user['id'];
             $sortField = $this->request->get('sort_field', 'id');
@@ -56,6 +58,8 @@ class TaskController extends BaseController
 
             $tasks = $this->taskRepository->getFilteredTasks(
                 $user['id'],
+                $id,
+                $title,
                 $status,
                 $sortField,
                 $sortOrder,
