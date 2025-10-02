@@ -27,20 +27,21 @@ abstract class Model
 
             if ($count > 0) {
                 $sql .= " WHERE ";
-            }
 
-            $i = 1;
-            foreach ($data as $key => $value) {
-                if ($i < $count) {
-                    $sql .= " {$key} = :{$key} AND ";
-                }
-                else {
-                    $sql .= " {$key} = :{$key}";
+                $i = 1;
+                foreach ($data as $key => $value) {
+                    if ($i < $count) {
+                        $sql .= "{$key} = ? AND ";
+                    }
+                    else {
+                        $sql .= "{$key} = ?";
+                    }
+
+                    $i++;
                 }
 
-                $i++;
+                $data = array_values($data);
             }
-            $data = array_values($data);
         }
 
         if (count($sort) === 2) {
@@ -150,6 +151,7 @@ abstract class Model
             $data = $this->filterData($params);
             $count = count($data);
 
+
             if ($count > 0) {
                 $sql .= " WHERE ";
             }
@@ -174,11 +176,18 @@ abstract class Model
         return $stmt->fetch()['count'] ?? 0;
     }
 
+    /**
+     * There is only existent fields with values can be passed forward
+     * @param array $data
+     * @return array matched fields from db or empty
+     */
     protected function filterData(array $data): array
     {
         if (empty($this->fillable)) {
-            return $data;
+            return [];
         }
+
+        $data = array_filter($data, fn($item) => !empty($item));
 
         return array_intersect_key($data, array_flip($this->fillable));
     }

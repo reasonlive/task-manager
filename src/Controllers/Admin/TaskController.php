@@ -26,20 +26,28 @@ class TaskController extends BaseController
      */
     public function index(): void
     {
-        $tasks = Task::getInstance()
-            ->findAllWithDetails();
+        $user = $this->request->get('user_id');
+        $tag = $this->request->get('tag');
+        $status = $this->request->get('status', 'ALL');
+        $sort = $this->request->get('sort', 'id');
+        $order = strtoupper($this->request->get('order', 'DESC'));
+
+        $tasks = Task::getInstance()->findAll([
+            'user_id' => $user,
+            'status' => $status !== 'ALL' ? $status : null,
+        ], [$sort, $order]);
 
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
             'statuses' => TaskStatus::names(),
             'available_users' => User::getInstance()->findByRole('MODERATOR'),
             'available_tags' => Tag::getInstance()->findAll(),
-            'sort_field' => $this->request->get('sort', 'id'),
-            'sort_order' => $this->request->get('order', 'asc'),
+            'sort_field' => $sort,
+            'sort_order' => $order,
             'current_filters' => [
-                'status' => $this->request->get('status'),
-                'tag' => $this->request->get('tag'),
-                'user_id' => $this->request->get('user_id'),
+                'status' => $status,
+                'tag' => $tag,
+                'user_id' => $user
             ],
         ]);
     }
@@ -78,6 +86,8 @@ class TaskController extends BaseController
         try {
             $body = $this->request->getBody();
 
+            $this->taskRepository->beginTransaction();
+
             $id = $this->taskRepository->create([
                 'title' => $body['title'],
                 'description' => $body['description'],
@@ -94,9 +104,13 @@ class TaskController extends BaseController
                 foreach ($ids as $tagId) {
                     $this->taskRepository->addTag($id, $tagId);
                 }
+
+                $this->taskRepository->commit();
             }
 
         } catch (\Exception $e) {
+            $this->taskRepository->rollBack();
+
             $this->response
                 ->setStatusCode(500)
                 ->json(['success' => false, 'error' => $e->getMessage()]);

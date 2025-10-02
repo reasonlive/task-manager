@@ -29,11 +29,11 @@
             <thead class="table-dark">
             <tr>
                 <th>
-                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
                        class="text-white text-decoration-none d-flex align-items-center">
                         ID
                         {% if sort_field == 'id' %}
-                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                            <i class="bi bi-arrow-{{ sort_order|lower == 'asc' ? 'up' : 'down' }} ms-1"></i>
                         {% else %}
                             <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
                         {% endif %}
@@ -45,11 +45,11 @@
                 <th>User</th>
                 <th>Tags</th>
                 <th>
-                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
                        class="text-white text-decoration-none d-flex align-items-center">
                         Created
                         {% if sort_field == 'created_at' %}
-                            <i class="bi bi-arrow-{{ sort_order == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                            <i class="bi bi-arrow-{{ sort_order|lower == 'asc' ? 'up' : 'down' }} ms-1"></i>
                         {% else %}
                             <i class="bi bi-arrow-down-up ms-1 text-white-50"></i>
                         {% endif %}
@@ -292,7 +292,7 @@
                             <select class="form-select" id="tagFilter" name="tag">
                                 <option value="">All Tags</option>
                                 {% for tag in available_tags %}
-                                    <option value="{{ tag }}" {{ current_filters.tag == tag ? 'selected' : '' }}>{{ tag }}</option>
+                                    <option value="{{ tag.name }}" {{ current_filters.tag == tag.name ? 'selected' : '' }}>{{ tag.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
