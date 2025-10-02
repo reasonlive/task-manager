@@ -45,8 +45,8 @@ export const authAPI = {
 export const tasksAPI = {
     getTasks: (params = {}) => api.get('/tasks', { params }),
     createTask: (taskData) => api.post('/tasks', taskData),
-    updateTask: (id, taskData) => api.post(`/tasks/${id}`, taskData),
-    deleteTask: (id) => api.delete(`/tasks/${id}`),
+    updateTask: (id, taskData) => api.post(`/tasks/update`, taskData),
+    deleteTask: (id) => api.delete(`/tasks/delete/${id}`),
 }
 
 export default api
