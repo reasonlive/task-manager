@@ -29,13 +29,17 @@ class TaskController extends BaseController
         $user = $this->request->get('user_id');
         $tag = $this->request->get('tag');
         $status = $this->request->get('status', 'ALL');
+
         $sort = $this->request->get('sort', 'id');
         $order = strtoupper($this->request->get('order', 'DESC'));
 
-        $tasks = Task::getInstance()->findAll([
+        $tasks = Task::getInstance()
+            ->setRelation(User::class)
+            ->findAll([
             'user_id' => $user,
             'status' => $status !== 'ALL' ? $status : null,
-        ], [$sort, $order]);
+        ], sort: [$sort, $order]);
+
 
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
@@ -99,7 +103,7 @@ class TaskController extends BaseController
             }
 
             if (isset($body['tags']) && count($body['tags'])) {
-                $ids = Tag::getInstance()->getIds($body['tags']);
+                $ids = Tag::getInstance()->getIds('name', $body['tags']);
 
                 foreach ($ids as $tagId) {
                     $this->taskRepository->addTag($id, $tagId);

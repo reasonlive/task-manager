@@ -70,15 +70,13 @@
                     </td>
                     <td>
                         <select class="form-select form-select-sm" onchange="updateTaskStatus({{ task.id }}, this.value)">
-                            <option value="TODO" {{ task.status == 'TODO' ? 'selected' : '' }}>TODO</option>
-                            <option value="IN_PROGRESS" {{ task.status == 'IN_PROGRESS' ? 'selected' : '' }}>IN PROGRESS</option>
-                            <option value="READY" {{ task.status == 'READY' ? 'selected' : '' }}>READY</option>
-                            <option value="FOR_REVIEW" {{ task.status == 'FOR_REVIEW' ? 'selected' : '' }}>FOR REVIEW</option>
-                            <option value="DONE" {{ task.status == 'DONE' ? 'selected' : '' }}>DONE</option>
+                            {% for status in statuses %}
+                                <option value="{{ status }}" {{ task.status == status ? 'selected' : '' }}>{{ status }}</option>
+                            {% endfor %}
                         </select>
                     </td>
                     <td>
-                        <span class="badge bg-info">{{ task.user_name }}</span>
+                        <span class="badge bg-info">{{ task.name }}</span>
                     </td>
                     <td>
                         {% if task.tags %}
@@ -280,11 +278,9 @@
                             <label for="statusFilter" class="form-label">Status</label>
                             <select class="form-select" id="statusFilter" name="status">
                                 <option value="">All Statuses</option>
-                                <option value="TODO" {{ current_filters.status == 'TODO' ? 'selected' : '' }}>TODO</option>
-                                <option value="IN_PROGRESS" {{ current_filters.status == 'IN_PROGRESS' ? 'selected' : '' }}>IN PROGRESS</option>
-                                <option value="READY" {{ current_filters.status == 'READY' ? 'selected' : '' }}>READY</option>
-                                <option value="FOR_REVIEW" {{ current_filters.status == 'FOR_REVIEW' ? 'selected' : '' }}>FOR REVIEW</option>
-                                <option value="DONE" {{ current_filters.status == 'DONE' ? 'selected' : '' }}>DONE</option>
+                                {% for status in statuses %}
+                                    <option value="{{ status }}" {{ current_filters.status == status ? 'selected' : '' }}>{{ status }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">

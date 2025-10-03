@@ -5,7 +5,14 @@ namespace App\Models;
 class Task extends Model
 {
     protected string $table = 'tasks';
-    protected array $fillable = ['title', 'description', 'status', 'user_id', 'created_at', 'updated_at'];
+    protected array $fillable = [
+        'title',
+        'description',
+        'status',
+        'user_id',
+        'created_at',
+        'updated_at'
+    ];
 
     public function findAllWithDetails(): array
     {

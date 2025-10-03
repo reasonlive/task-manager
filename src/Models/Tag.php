@@ -24,17 +24,6 @@ class Tag extends Model
         return array_column($this->db->query($sql)->fetchAll(), 'name');
     }
 
-    public function getIds(array $names = []): array
-    {
-        $sql = "SELECT id FROM tags";
-
-        if (!empty($names)) {
-            $sql .= " WHERE name IN ('" . implode("','", $names) . "')";
-        }
-
-        return array_column($this->db->query($sql)->fetchAll(), 'id');
-    }
-
     public function getPopularTags(int $limit = 10): array
     {
         $sql = "SELECT t.*, COUNT(tt.task_id) as usage_count
