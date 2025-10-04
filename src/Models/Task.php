@@ -2,6 +2,9 @@
 declare(strict_types=1);
 namespace App\Models;
 
+use App\Core\Data\DQL\Aggregation;
+use App\Core\Data\DQL\Query;
+
 class Task extends Model
 {
     protected string $table = 'tasks';
@@ -14,48 +17,41 @@ class Task extends Model
         'updated_at'
     ];
 
-    public function findAllWithDetails(): array
+    public function findAllWithRelations($userId, $status, $tag, $sort, $order): ?array
     {
-        $sql = "SELECT t.*, u.name as user_name, GROUP_CONCAT(tg.name) as tags
-                FROM tasks t
-                LEFT JOIN users u ON t.user_id = u.id
-                LEFT JOIN task_tags tt ON t.id = tt.task_id
-                LEFT JOIN tags tg ON tt.tag_id = tg.id
-                GROUP BY t.id
-                ORDER BY t.created_at DESC";
+        $query = Query::select()
+            ->enableParamsPreparation()
+            ->from('tasks', 't')
+            ->innerJoin('users', 'u', 'user_id')
+            ->setSelectedField('users', 'name', 'username')
+            ->manyToManyJoin('tags', 'task_tags', 'task_id', 'tag_id');
 
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll();
-    }
+        if ($userId) {
+            $query->and('user_id', $userId);
+        }
 
-    public function findByIdWithDetails(int $id): ?array
-    {
-        $sql = "SELECT t.*, u.name as user_name, u.email as user_email, 
-                       GROUP_CONCAT(tg.name) as tags, GROUP_CONCAT(tg.id) as tag_ids
-                FROM tasks t
-                LEFT JOIN users u ON t.user_id = u.id
-                LEFT JOIN task_tags tt ON t.id = tt.task_id
-                LEFT JOIN tags tg ON tt.tag_id = tg.id
-                WHERE t.id = ?
-                GROUP BY t.id";
+        if ($status && $status !== 'ALL') {
+            $query->and('status', $status);
+        }
 
-        $stmt = $this->db->query($sql, [$id]);
-        return $stmt->fetch() ?: null;
-    }
+        $query
+            ->withoutConditions()
+            ->group('tasks', 'id')
+            ->setSelectedField('tags', 'name', 'tag', Aggregation::GROUP_CONCAT);
 
-    public function findByStatus(string $status): array
-    {
-        return $this->where('status', $status);
-    }
+        if ($sort && $order) {
+            $query->order($sort, $order);
+        }
 
-    public function findByUserId(int $userId): array
-    {
-        return $this->where('user_id', $userId);
+        //$query->dump();
+
+        $stmt = $this->db->query($query->sql(), $query->params());
+        return $stmt->fetchAll() ?: null;
     }
 
     public function addTag(int $taskId, int $tagId): bool
     {
-        $sql = "INSERT IGNORE INTO task_tags (task_id, tag_id) VALUES (?, ?)";
+        $sql = "INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)";
         return $this->db->query($sql, [$taskId, $tagId])->rowCount() > 0;
     }
 

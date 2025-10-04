@@ -18,7 +18,7 @@ class AdminController extends BaseController
 
     public function dashboard(): void
     {
-        $tasks = $this->taskModel->findAllWithDetails();
+        $tasks = $this->taskModel->findAll();
         $stats = $this->getTaskStats($tasks);
 
         $this->render('admin/dashboard.html.twig', [

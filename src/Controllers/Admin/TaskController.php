@@ -33,13 +33,13 @@ class TaskController extends BaseController
         $sort = $this->request->get('sort', 'id');
         $order = strtoupper($this->request->get('order', 'DESC'));
 
-        $tasks = Task::getInstance()
-            ->setRelation(User::class)
-            ->findAll([
-            'user_id' => $user,
-            'status' => $status !== 'ALL' ? $status : null,
-        ], sort: [$sort, $order]);
-
+        $tasks = Task::getInstance()->findAllWithRelations(
+            $user,
+            $status,
+            $tag,
+            $sort,
+            $order
+        );
 
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
@@ -63,7 +63,7 @@ class TaskController extends BaseController
      */
     public function show(int $id): void
     {
-        $task = Task::getInstance()->findByIdWithDetails($id);
+        $task = Task::getInstance()->findById($id);
 
         if (!$task) {
             $this->response->setStatusCode(404);
@@ -89,8 +89,12 @@ class TaskController extends BaseController
     {
         try {
             $body = $this->request->getBody();
+            $tags = $this->request->get('tags');
+            if ($tags) {
+                $tags = explode(',', $tags);
+            }
 
-            $this->taskRepository->beginTransaction();
+            //$this->taskRepository->beginTransaction();
 
             $id = $this->taskRepository->create([
                 'title' => $body['title'],
@@ -102,18 +106,21 @@ class TaskController extends BaseController
                 $this->json(['success' => true, 'Task created successfully']);
             }
 
-            if (isset($body['tags']) && count($body['tags'])) {
-                $ids = Tag::getInstance()->getIds('name', $body['tags']);
+            if ($tags && count($tags)) {
+                $ids = Tag::getInstance()->getIds('name', $tags);
 
                 foreach ($ids as $tagId) {
-                    $this->taskRepository->addTag($id, $tagId);
+                    if ($this->taskRepository->addTag($id, $tagId)) {
+                        $this->json(['success' => false, 'Tags wasn\'t added successfully']);
+                    }
                 }
 
-                $this->taskRepository->commit();
+                //$this->taskRepository->commit();
             }
 
         } catch (\Exception $e) {
-            $this->taskRepository->rollBack();
+            error_log($e->getMessage());
+            //$this->taskRepository->rollBack();
 
             $this->response
                 ->setStatusCode(500)

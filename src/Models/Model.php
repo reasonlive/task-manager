@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace App\Models;
 
-use App\Core\Database;
+use App\Core\Data\Database;
 
 abstract class Model
 {
@@ -11,7 +11,7 @@ abstract class Model
     protected string $primaryKey = 'id';
     protected array $fillable = [];
 
-    /** @var string|null table name of relation */
+    /** @var string|null Classname of relation */
     protected ?string $relationship = null;
 
     /** @var bool For checking pushing into database */
@@ -29,10 +29,7 @@ abstract class Model
 
     public function setRelation(mixed $relation): static
     {
-        if (str_contains($relation, 'Models')) {
-            $this->relationship = Model::getInstance($relation)->getTableName();
-
-        } else if (is_string($relation)) {
+        if (str_contains($relation, 'Models') && class_exists($relation)) {
             $this->relationship = $relation;
         }
 
@@ -45,20 +42,21 @@ abstract class Model
         $sql = "SELECT t.*";
 
         if ($this->relationship) {
+            $fk_table = Model::getInstance($this->relationship)->getTableName();
             $fk = array_filter(
                 $this->fillable,
-                fn($field) => str_starts_with($field, substr($this->relationship, 0, 3))
+                fn($field) => str_starts_with($field, substr($fk_table, 0, 3))
                     && str_ends_with($field, '_id')
             );
 
-            $fk_fields = array_map(fn($field) => "r." . $field, $this->getTableColumns($this->relationship));
+            $fk_fields = array_map(fn($field) => "r." . $field, $this->getDiffRelationColumns());
             $fk_fields = implode(", ", $fk_fields);
 
             if (count($fk) === 1) {
                 $fk = reset($fk);
 
                 $sql .= ", $fk_fields FROM {$this->table} t";
-                $sql .= " JOIN {$this->relationship} as r ON t.{$fk} = r.{$this->primaryKey}";
+                $sql .= " JOIN {$fk_table} as r ON t.{$fk} = r.{$this->primaryKey}";
             }
         } else {
             $sql .= " FROM {$this->table} t";
@@ -105,8 +103,8 @@ abstract class Model
     {
         $sql = "SELECT id FROM {$this->table}";
 
-        if ($field && !empty($names)) {
-            $sql .= " WHERE {$field} IN ('" . implode("','", $names) . "')";
+        if ($field && !empty($values)) {
+            $sql .= " WHERE {$field} IN ('" . implode("','", $values) . "')";
         }
 
         return array_column($this->db->query($sql)->fetchAll(), 'id');
@@ -227,7 +225,7 @@ abstract class Model
      * @param array $data
      * @return array matched fields from db or empty
      */
-    protected function filterData(array $data): mixed
+    protected function filterData(array $data): array
     {
         $result = [];
         if (empty($this->fillable)) {
@@ -255,11 +253,19 @@ abstract class Model
         $stmt = $this->db->query($sql);
         $columns = $stmt->fetchAll();
 
-        return array_diff(array_column($columns, 'Field'), [
-            $this->primaryKey,
-            'created_at',
-            'updated_at'
-        ]);
+        return array_column($columns, 'Field');
+    }
+
+    private function getDiffRelationColumns(): array
+    {
+        if ($this->relationship) {
+            return array_diff(
+                $this->getTableColumns(Model::getInstance($this->relationship)->getTableName()),
+                $this->getTableColumns()
+            );
+        }
+
+        return [];
     }
 
     public function beginTransaction(): bool

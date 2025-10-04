@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
-namespace App\Core;
+namespace App\Core\Data;
 
+use App\Core\Env;
 use PDO;
 use PDOException;
 

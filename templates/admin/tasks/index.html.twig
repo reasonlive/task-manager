@@ -76,11 +76,11 @@
                         </select>
                     </td>
                     <td>
-                        <span class="badge bg-info">{{ task.name }}</span>
+                        <span class="badge bg-info">{{ task.username }}</span>
                     </td>
                     <td>
-                        {% if task.tags %}
-                            {% set tag_list = task.tags|split(',') %}
+                        {% if task.tag %}
+                            {% set tag_list = task.tag|split(',') %}
                             {% for tag in tag_list %}
                                 <span class="badge bg-secondary me-1">{{ tag }}</span>
                             {% endfor %}
