@@ -2,6 +2,8 @@
 
 namespace App\Controllers\Admin;
 
+use App\Core\Data\DQL\Relationship\ManyToMany;
+use App\Core\Data\DQL\Relationship\ManyToOne;
 use App\Core\Http\BaseController;
 use App\Enums\Task\Status as TaskStatus;
 use App\Models\Model;
@@ -63,7 +65,13 @@ class TaskController extends BaseController
      */
     public function show(int $id): void
     {
-        $task = Task::getInstance()->findById($id);
+        $task = Task::getInstance()->findById($id, [
+            (new ManyToOne('users', 'u', 'user_id'))
+                ->setField('name', 'username')
+                ->setField('email', 'email'),
+            (new ManyToMany('tags', 'task_tags', 'task_id', 'tag_id'))
+                ->setField('name', 'tag')
+        ]);
 
         if (!$task) {
             $this->response->setStatusCode(404);

@@ -51,14 +51,24 @@ class Task extends Model
 
     public function addTag(int $taskId, int $tagId): bool
     {
-        $sql = "INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)";
-        return $this->db->query($sql, [$taskId, $tagId])->rowCount() > 0;
+        $sql = Query::insert('task_tags')
+            ->enableParamsPreparation()
+            ->setField('task_id', $taskId)
+            ->setField('tag_id', $tagId);
+
+        return $this
+                ->db
+                ->query($sql->sql(), $sql->params())
+                ->rowCount() > 0;
     }
 
     public function removeTag(int $taskId, int $tagId): bool
     {
-        $sql = "DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?";
-        return $this->db->query($sql, [$taskId, $tagId])->rowCount() > 0;
+        $query = Query::delete('task_tags')
+            ->and('task_id', $taskId)
+            ->and('tag_id', $tagId);
+
+        return $this->db->query($query->sql(), $query->params())->rowCount() > 0;
     }
 
     public function getTaskTags(int $taskId): array

@@ -93,11 +93,24 @@ class Query
 
     /**
      * Select factory
+     * @param string|null $table
+     * @param bool $prepare
      * @return self
      */
-    public static function select(): self
+    public static function select(?string $table = null, bool $prepare = true): self
     {
-        return new self(Operation::SELECT);
+        $q = new self(Operation::SELECT);
+
+        if ($prepare) {
+            $q->enableParamsPreparation();
+        }
+
+        if ($table) {
+            $q->table = $table;
+            $q->alias = substr($table, 0, 1);
+        }
+
+        return $q;
     }
 
     /**
@@ -329,6 +342,9 @@ class Query
         if ($alias) {
             $this->setAlias($alias);
         }
+        else {
+            $this->setAlias(substr($this->table, 0, 1));
+        }
 
         if (count($this->fields)) {
             $this->drainFields();
@@ -473,11 +489,11 @@ class Query
         }
 
         if (self::$ENABLE_PDO_PREPARATION) {
-            $this->buffer[] = "$field " . $operator->value . " ?";
+            $this->buffer[] = "$this->alias.$field " . $operator->value . " ?";
             $this->params[] = $value;
         }
         else {
-            $this->buffer[] = "$field " . $operator->value . " $value";
+            $this->buffer[] = "$this->alias.$field " . $operator->value . " $value";
         }
 
         self::$WHERE_CONDITION_STARTED = true;
@@ -714,13 +730,20 @@ class Query
             $rightPart = array_slice($this->buffer, $pos, null, true);
 
             $leftPart[] = array_pop($leftPart) . ",";
+
             foreach ($this->relations as $relation) {
-                foreach ($relation->getFields() as $name => $alias) {
-                    if (str_contains($name, '(')) { // for aggregation functions
-                        $leftPart[] = "$name AS $alias,";
-                    }
-                    else {
-                        $leftPart[] = $relation->alias . ".$name AS $alias,";
+                // take all fields from relation
+                if (empty($relation->getFields())) {
+                    $leftPart[] = $relation->alias . ".*,";
+                }
+                else {
+                    foreach ($relation->getFields() as $name => $alias) {
+                        if (str_contains($name, '(')) { // for aggregation functions
+                            $leftPart[] = "$name AS $alias,";
+                        }
+                        else {
+                            $leftPart[] = $relation->alias . ".$name AS $alias,";
+                        }
                     }
                 }
             }

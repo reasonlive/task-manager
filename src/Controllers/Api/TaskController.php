@@ -17,7 +17,7 @@ class TaskController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->taskRepository = Model::getInstance(Task::class);
+        $this->taskRepository = Task::getInstance();
     }
 
     /**
@@ -114,7 +114,7 @@ class TaskController extends BaseController
                 return;
             }
 
-            $task = $this->taskRepository->findByIdWithDetails((int)$id);
+            $task = $this->taskRepository->findById((int)$id);
 
             if (!$task || $task['user_id'] !== $user['id']) {
                 $this->json([
@@ -186,7 +186,7 @@ class TaskController extends BaseController
             }
 
             // Получаем созданную задачу с деталями
-            $task = $this->taskRepository->findByIdWithDetails($taskId);
+            $task = $this->taskRepository->findById($taskId);
 
             $this->json([
                 'success' => true,
@@ -276,7 +276,7 @@ class TaskController extends BaseController
             }
 
             // Получаем обновленную задачу
-            $task = $this->taskRepository->findByIdWithDetails((int)$input['id']);
+            $task = $this->taskRepository->findById((int)$input['id']);
 
             $this->json([
                 'success' => true,
