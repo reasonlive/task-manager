@@ -24,6 +24,12 @@ abstract class Relation
         return $this->fields;
     }
 
+    /**
+     * TODO: implement logic without any fields
+     * @param string $field
+     * @param string $alias
+     * @return $this
+     */
     public function setField(string $field, string $alias): static
     {
         $this->fields[$field] = $alias;

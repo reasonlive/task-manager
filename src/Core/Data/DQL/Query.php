@@ -11,6 +11,7 @@ class Query
 {
     private Stage $stage;
     private Operation $operation;
+
     private const string FROM = 'FROM';
     public const string JOIN = 'JOIN';
     public const string LEFT_JOIN = 'LEFT JOIN';
@@ -24,19 +25,25 @@ class Query
     private const string ORDER_ASC = 'ASC';
     private const string ORDER_DESC = 'DESC';
 
+    /** @var string|null main table name */
     private ?string $table = null;
+    /** @var string|null alias of main table */
     private ?string $alias = null;
+    /** @var array fields as table columns with its aliases */
     private array $fields = [];
+    /** @var array params for PDO preparation */
     private array $params = [];
+    /** @var Relation[] join tables */
     private array $relations = [];
+    /** @var array main query parts */
     private array $buffer = [];
     private static bool $ENABLE_PDO_PREPARATION = false;
+    private static bool $WHERE_CONDITION_STARTED = false;
 
     public function __construct(Operation $operation = Operation::SELECT)
     {
         $this->operation = $operation;
-        $this->buffer[] = $this->operation->value;
-        $this->stage = Stage::FIELD_INITIALIZATION;
+        $this->shiftStage(Stage::FIELD_INITIALIZATION);
     }
 
     public function shiftStage(Stage $stage): self
@@ -48,12 +55,21 @@ class Query
                 break;
             case Stage::TABLE_DEFINITION:
                 $this->stage = Stage::TABLE_DEFINITION;
-                $this->buffer[] = self::FROM;
-                $this->buffer[] = $this->table . ($this->alias ? " AS $this->alias" : '');
+                if ($this->operation == Operation::SELECT) {
+                    $this->buffer[] = self::FROM;
+                    $this->buffer[] = $this->table . ($this->alias ? " AS $this->alias" : '');
+                }
                 break;
             case Stage::WHERE_CONDITION_PHASE:
-                $this->stage = Stage::WHERE_CONDITION_PHASE;
+                if ($this->operation == Operation::DELETE) {
+                    $this->buffer[] = $this->table;
+                }
+                else if ($this->operation == Operation::UPDATE) {
+                    $this->drainFields();
+                }
+
                 $this->buffer[] = self::WHERE;
+                $this->stage = Stage::WHERE_CONDITION_PHASE;
                 break;
             case Stage::GROUP_BY_PHASE:
             case Stage::HAVING_PHASE:
@@ -75,9 +91,83 @@ class Query
         return $this;
     }
 
+    /**
+     * Select factory
+     * @return self
+     */
     public static function select(): self
     {
         return new self(Operation::SELECT);
+    }
+
+    /**
+     * Insert factory
+     * @param string|null $table
+     * @param bool $prepare
+     * @return self
+     */
+    public static function insert(?string $table = null, bool $prepare = true): self
+    {
+        $query = new self(Operation::INSERT);
+
+        if ($table !== null) {
+            $query->table = $table;
+        }
+
+        if ($prepare) {
+            $query->enableParamsPreparation();
+        }
+
+        return $query;
+    }
+
+    /**
+     * Update factory
+     * @param string|null $table
+     * @param string|null $alias
+     * @return self
+     */
+    public static function update(?string $table = null, bool $prepare = true): self
+    {
+        $query = new self(Operation::UPDATE);
+
+        if ($table !== null) {
+            $query->table = $table;
+            $query->setAlias(
+                substr($query->table, 0, 1)
+                . substr($query->table, strlen($query->table) - 2)
+            );
+
+            $query->buffer[] = "$query->table AS $query->alias";
+        }
+
+        if ($prepare) {
+            $query->enableParamsPreparation();
+        }
+
+        return $query;
+    }
+
+    /**
+     * Delete factory
+     * @param string|null $table
+     * @param bool $prepare
+     * @return self
+     */
+    public static function delete(?string $table = null, bool $prepare = true): self
+    {
+        $query = new self(Operation::DELETE);
+
+        if ($table !== null) {
+            $query->table = $table;
+            $query->shiftStage(Stage::WHERE_CONDITION_PHASE);
+        }
+
+        if ($prepare) {
+            $query->enableParamsPreparation();
+        }
+
+        return $query;
     }
 
     public function enableParamsPreparation(): self
@@ -86,10 +176,18 @@ class Query
         return $this;
     }
 
-    public function setTable(string $tableName): self
+    public function setTable(string $tableName, ?string $alias = null): self
     {
         if ($this->stage === Stage::FIELD_INITIALIZATION) {
             $this->table = $tableName;
+        }
+
+        if ($alias !== null) {
+            $this->alias = $alias;
+        }
+
+        if ($this->operation === Operation::DELETE) {
+            $this->shiftStage(Stage::WHERE_CONDITION_PHASE);
         }
 
         return $this;
@@ -109,10 +207,21 @@ class Query
         return $this->table === $table ? $this->alias : $this->getRelationAlias($table);
     }
 
-    public function setField(string $fieldName, ?string $fieldValue = null): self
+    /**
+     * Set fields for insert, update operations <br>
+     * For select use setSelectedField(), this method turns value into alias name though
+     * @param string $fieldName
+     * @param mixed|null $fieldValue
+     * @return $this
+     * @throws \Exception
+     */
+    public function setField(string $fieldName, mixed $fieldValue = null): self
     {
         if ($this->stage === Stage::FIELD_INITIALIZATION) {
             $this->fields[$fieldName] = $fieldValue;
+        }
+        else {
+            throw new \Exception("Forbidden method: " . __METHOD__);
         }
 
         return $this;
@@ -120,9 +229,13 @@ class Query
 
     private function drainFields(): void
     {
-        $i = 1;
-        foreach ($this->fields as $fieldName => $fieldValue) {
-            if ($this->operation === Operation::SELECT) {
+        if ($this->stage !== Stage::FIELD_INITIALIZATION) {
+            throw new \Exception("Forbidden method: " . __METHOD__);
+        }
+
+        if ($this->operation === Operation::SELECT) {
+            $i = 1;
+            foreach ($this->fields as $fieldName => $fieldValue) {
                 $item = "$fieldName";
 
                 if (!empty($fieldValue)) {
@@ -141,14 +254,74 @@ class Query
                 $i++;
             }
         }
+        else if ($this->operation === Operation::INSERT) {
+            $i = 1;
+            $values = [];
+            $item = '';
+            foreach ($this->fields as $fieldName => $fieldValue) {
+                if ($i === 1) {
+                    $item .= '(';
+                }
+
+                if ($i > 1) {
+                    $item .= ", $fieldName";
+                }
+                else {
+                    $item .= $fieldName;
+                }
+
+                $values[] = $fieldValue;
+                $i++;
+            }
+
+            $this->buffer[] = $this->table;
+            $this->buffer[] = $item . ')';
+            $this->buffer[] = "VALUES";
+
+            $str = '(';
+            if (self::$ENABLE_PDO_PREPARATION) {
+                $str .= implode(', ', str_split(str_repeat('?', count($values))));
+                $this->params = $values;
+            }
+            else {
+                $str .= implode(", ", $values);
+            }
+            $str .= ')';
+
+            $this->buffer[] = $str;
+        }
+        else if ($this->operation === Operation::UPDATE) {
+            $this->buffer[] = 'SET';
+            $i = 1;
+            foreach ($this->fields as $fieldName => $fieldValue) {
+                $value = self::$ENABLE_PDO_PREPARATION ? "?" : $fieldValue;
+                $this->params[] = $fieldValue;
+                $item = "$this->alias.$fieldName = $value";
+
+                if ($i < count($this->fields)) {
+                    $item .= ',';
+                }
+
+                $this->buffer[] = $item;
+                $i++;
+            }
+        }
 
         $this->fields = [];
     }
 
-
-
+    /**
+     * Select operation launcher
+     * @param string|null $tableName
+     * @param string|null $alias
+     * @return $this
+     */
     public function from(?string $tableName = null, ?string $alias = null): self
     {
+        if ($this->operation !== Operation::SELECT) {
+            throw new \Exception("Forbidden method: " . __METHOD__);
+        }
+
         if ($tableName) {
             $this->setTable($tableName);
         }
@@ -232,6 +405,14 @@ class Query
         return $this;
     }
 
+    public function setRelation(Relation $relation): static
+    {
+        $relation->build($this->table);
+        $this->relations[$relation->relation] = $relation;
+
+        return $this;
+    }
+
     public function setSelectedField(
         string $relation,
         string $fieldName,
@@ -283,11 +464,7 @@ class Query
 
     private function where(mixed $field, Comparison $operator, mixed $value, ?string $relatedTable = null): self
     {
-        if ($this->stage !== Stage::WHERE_CONDITION_PHASE && $this->stage !== Stage::TABLE_DEFINITION) {
-            throw new \Exception("Where clause is forbidden here");
-        }
-
-        if ($this->stage === Stage::TABLE_DEFINITION) {
+        if ($this->stage == Stage::FIELD_INITIALIZATION || $this->stage == Stage::TABLE_DEFINITION) {
             $this->shiftStage(Stage::WHERE_CONDITION_PHASE);
         }
 
@@ -302,6 +479,8 @@ class Query
         else {
             $this->buffer[] = "$field " . $operator->value . " $value";
         }
+
+        self::$WHERE_CONDITION_STARTED = true;
 
         return $this;
     }
@@ -408,7 +587,7 @@ class Query
 
     public function and(mixed $field = null, mixed $value = null, ?string $table = null): self
     {
-        if ($this->stage === Stage::WHERE_CONDITION_PHASE) {
+        if ($this->stage === Stage::WHERE_CONDITION_PHASE && self::$WHERE_CONDITION_STARTED) {
             $this->buffer[] = Condition::AND->value;
         }
 
@@ -421,7 +600,7 @@ class Query
 
     public function or(mixed $field, mixed $value, ?string $table = null): self
     {
-        if ($this->stage === Stage::WHERE_CONDITION_PHASE) {
+        if ($this->stage === Stage::WHERE_CONDITION_PHASE && self::$WHERE_CONDITION_STARTED) {
             $this->buffer[] = Condition::OR->value;
         }
 
@@ -514,14 +693,22 @@ class Query
 
     private function build(): string
     {
-        /*if ($this->stage !== Stage::FINAL) {
-            throw new \Exception("Build query is forbidden here");
-        }*/
+        if ($this->operation == Operation::INSERT) {
+            $this->drainFields();
+        }
+
+        if (
+            $this->operation == Operation::UPDATE
+            && $this->stage !== Stage::WHERE_CONDITION_PHASE
+        )
+        {
+            throw new \Exception("WHERE condition is missed");
+        }
 
         $result = '';
 
         // check if relations has some fields to select
-        if (count($this->relations)) {
+        if (count($this->relations) && $this->operation === Operation::SELECT) {
             $pos = array_search(self::FROM, $this->buffer);
             $leftPart = array_slice($this->buffer, 0, $pos, true);
             $rightPart = array_slice($this->buffer, $pos, null, true);
