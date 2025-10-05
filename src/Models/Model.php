@@ -3,10 +3,12 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Data\Database;
+use App\Core\Data\DQL\Query;
+use App\Core\Data\DQL\Relationship\Relation;
 
 abstract class Model
 {
-    protected Database $db;
+    public Database $db;
     protected string $table;
     protected string $primaryKey = 'id';
     protected array $fillable = [];
@@ -110,10 +112,29 @@ abstract class Model
         return array_column($this->db->query($sql)->fetchAll(), 'id');
     }
 
-    public function findById(int $id): ?array
+    /**
+     * Find by id whether relations or not
+     * @param int $id
+     * @param Relation[] $relations TODO: implement relation without fields
+     * @return array|null
+     */
+    public function findById(int $id, array $relations = []): ?array
     {
-        $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ?";
-        $stmt = $this->db->query($sql, [$id]);
+        $query = Query::select()
+            ->setTable($this->table)
+            ->setAlias('t');
+
+        if (count($relations) > 0) {
+            foreach ($relations as $relation) {
+                $query->setRelation($relation);
+            }
+        }
+
+        $query
+            ->enableParamsPreparation()
+            ->equals($this->primaryKey, $id);
+
+        $stmt = $this->db->query($query->sql(), $query->params());
         return $stmt->fetch() ?: null;
     }
 
@@ -132,12 +153,12 @@ abstract class Model
             return null;
         }
 
-        $columns = implode(', ', array_keys($filteredData));
-        $placeholders = implode(', ', array_fill(0, count($filteredData), '?'));
+        $query = Query::insert($this->table);
+        foreach ($filteredData as $field => $value) {
+            $query->setField($field, $value);
+        }
 
-        $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
-
-        if ($this->db->query($sql, array_values($filteredData))->rowCount() > 0) {
+        if ($this->db->query($query->sql(), $query->params())->rowCount() > 0) {
             return $this->db->lastInsertId();
         }
 
@@ -164,8 +185,10 @@ abstract class Model
 
     public function delete(int $id): bool
     {
-        $sql = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = ?";
-        return $this->db->query($sql, [$id])->rowCount() > 0;
+        $query = Query::delete($this->table)
+            ->equals($this->primaryKey, $id);
+
+        return $this->db->query($query->sql(), $query->params())->rowCount() > 0;
     }
 
     public function where(string $column, $value, string $operator = '='): array
