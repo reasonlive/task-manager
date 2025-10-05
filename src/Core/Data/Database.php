@@ -11,6 +11,7 @@ class Database
 {
     private static ?Database $instance = null;
     private PDO $connection;
+    private bool $_CHECK_UNIQUE_RECORDS = false;
 
     private function __construct()
     {
@@ -53,7 +54,7 @@ class Database
         return $this->connection;
     }
 
-    public function query(string $sql, ?array $params = null): \PDOStatement
+    public function query(string $sql, ?array $params = null): array|int
     {
         if (str_starts_with($sql, Operation::SELECT->value)) {
             $sql = $this->analyzeAndPrepare($sql);
@@ -61,7 +62,16 @@ class Database
 
         $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
-        return $stmt;
+
+        if (
+            str_starts_with($sql, Operation::INSERT->value)
+            || str_starts_with($sql, Operation::DELETE->value)
+            || str_starts_with($sql, Operation::UPDATE->value)
+        ) {
+            return $stmt->rowCount();
+        }
+
+        return $stmt->fetchAll();
     }
 
     public function lastInsertId(): int

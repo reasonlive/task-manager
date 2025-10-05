@@ -21,7 +21,7 @@ class Tag extends Model
     public function getNames(): array
     {
         $sql = "SELECT name FROM tags";
-        return array_column($this->db->query($sql)->fetchAll(), 'name');
+        return array_column($this->db->query($sql), 'name');
     }
 
     public function getPopularTags(int $limit = 10): array
@@ -33,8 +33,7 @@ class Tag extends Model
                 ORDER BY usage_count DESC
                 LIMIT ?";
 
-        $stmt = $this->db->query($sql, [$limit]);
-        return $stmt->fetchAll();
+        return $this->db->query($sql, [$limit]);
     }
 
     public function getTagsWithTaskCount(): array
@@ -45,8 +44,7 @@ class Tag extends Model
                 GROUP BY t.id
                 ORDER BY t.name";
 
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll();
+        return $this->db->query($sql);
     }
 
     public function createMany(array $tagNames): bool

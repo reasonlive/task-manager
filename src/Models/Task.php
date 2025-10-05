@@ -45,8 +45,7 @@ class Task extends Model
 
         //$query->dump();
 
-        $stmt = $this->db->query($query->sql(), $query->params());
-        return $stmt->fetchAll() ?: null;
+        return $this->db->query($query->sql(), $query->params()) ?? null;
     }
 
     public function addTag(int $taskId, int $tagId): bool
@@ -58,8 +57,7 @@ class Task extends Model
 
         return $this
                 ->db
-                ->query($sql->sql(), $sql->params())
-                ->rowCount() > 0;
+                ->query($sql->sql(), $sql->params()) > 0;
     }
 
     public function removeTag(int $taskId, int $tagId): bool
@@ -68,7 +66,7 @@ class Task extends Model
             ->and('task_id', $taskId)
             ->and('tag_id', $tagId);
 
-        return $this->db->query($query->sql(), $query->params())->rowCount() > 0;
+        return $this->db->query($query->sql(), $query->params()) > 0;
     }
 
     public function getTaskTags(int $taskId): array
@@ -77,8 +75,7 @@ class Task extends Model
                 JOIN task_tags tt ON tg.id = tt.tag_id
                 WHERE tt.task_id = ?";
 
-        $stmt = $this->db->query($sql, [$taskId]);
-        return $stmt->fetchAll();
+        return $this->db->query($sql, [$taskId]);
     }
 
     public function getFilteredTasks(
@@ -145,10 +142,6 @@ class Task extends Model
         $params[] = $limit;
         $params[] = $offset;
 
-        $stmt = $this->db->query($sql, $params);
-        //print($stmt->queryString);exit;
-        $tasks = $stmt->fetchAll();
-
-        return $tasks ?: [];
+        return $this->db->query($sql, $params) ?: [];
     }
 }

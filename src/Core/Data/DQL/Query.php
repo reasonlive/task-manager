@@ -5,7 +5,6 @@ namespace App\Core\Data\DQL;
 use App\Core\Data\DQL\Relationship\ManyToMany;
 use App\Core\Data\DQL\Relationship\ManyToOne;
 use App\Core\Data\DQL\Relationship\Relation;
-use App\Core\Data\DQL\Relationship\RelationType;
 
 class Query
 {

@@ -96,9 +96,7 @@ abstract class Model
             $data[] = $limit[1] ?? 0;
         }
 
-        $stmt = $this->db->query($sql, $data);
-
-        return $stmt->fetchAll();
+        return $this->db->query($sql, $data);
     }
 
     public function getIds(?string $field = null, array $values = []): array
@@ -109,7 +107,7 @@ abstract class Model
             $sql .= " WHERE {$field} IN ('" . implode("','", $values) . "')";
         }
 
-        return array_column($this->db->query($sql)->fetchAll(), 'id');
+        return array_column($this->db->query($sql), 'id');
     }
 
     /**
@@ -134,8 +132,7 @@ abstract class Model
             ->enableParamsPreparation()
             ->equals($this->primaryKey, $id);
 
-        $stmt = $this->db->query($query->sql(), $query->params());
-        return $stmt->fetch() ?: null;
+        return $this->db->query($query->sql(), $query->params()) ?: null;
     }
 
     /**
@@ -158,7 +155,7 @@ abstract class Model
             $query->setField($field, $value);
         }
 
-        if ($this->db->query($query->sql(), $query->params())->rowCount() > 0) {
+        if ($this->db->query($query->sql(), $query->params()) > 0) {
             return $this->db->lastInsertId();
         }
 
@@ -180,7 +177,7 @@ abstract class Model
         $params = array_values($filteredData);
         $params[] = $id;
 
-        return $this->db->query($sql, $params)->rowCount() > 0;
+        return $this->db->query($sql, $params) > 0;
     }
 
     public function delete(int $id): bool
@@ -188,14 +185,13 @@ abstract class Model
         $query = Query::delete($this->table)
             ->equals($this->primaryKey, $id);
 
-        return $this->db->query($query->sql(), $query->params())->rowCount() > 0;
+        return $this->db->query($query->sql(), $query->params()) > 0;
     }
 
     public function where(string $column, $value, string $operator = '='): array
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$column} {$operator} ?";
-        $stmt = $this->db->query($sql, [$value]);
-        return $stmt->fetchAll();
+        return $this->db->query($sql, [$value]);
     }
 
     public function firstWhere(string $column, $value, string $operator = '='): ?array
@@ -238,9 +234,7 @@ abstract class Model
             $data = array_values($data);
         }
 
-        $stmt = $this->db->query($sql, $data);
-
-        return $stmt->fetch()['count'] ?? 0;
+        return $this->db->query($sql, $data)['count'] ?? 0;
     }
 
     /**
@@ -273,8 +267,7 @@ abstract class Model
     {
         $t = $table ?: $this->table;
         $sql = "DESCRIBE {$t}";
-        $stmt = $this->db->query($sql);
-        $columns = $stmt->fetchAll();
+        $columns = $this->db->query($sql);
 
         return array_column($columns, 'Field');
     }

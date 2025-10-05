@@ -20,8 +20,7 @@ class Reply extends Model
                 WHERE r.task_id = ?
                 ORDER BY r.created_at ASC";
 
-        $stmt = $this->db->query($sql, [$taskId]);
-        return $stmt->fetchAll();
+        return $this->db->query($sql, [$taskId]);
     }
 
     public function findByUserId(int $userId): array
@@ -45,7 +44,6 @@ class Reply extends Model
 
         $sql .= " ORDER BY r.created_at DESC";
 
-        $stmt = $this->db->query($sql, $params);
-        return $stmt->fetchAll();
+        return $this->db->query($sql, $params);
     }
 }
