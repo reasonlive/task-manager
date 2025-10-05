@@ -11,8 +11,6 @@ class Database
 {
     private static ?Database $instance = null;
     private PDO $connection;
-    private bool $_CHECK_UNIQUE_RECORDS = false;
-
     private function __construct()
     {
         $config = [

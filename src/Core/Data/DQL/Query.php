@@ -637,14 +637,7 @@ class Query
 
     public function group(string $table, string $field): self
     {
-        if (
-            $this->stage !== Stage::WHERE_CONDITION_PHASE
-            && $this->stage !== Stage::GROUP_BY_PHASE
-        ) {
-            throw new \Exception("Group by clause is forbidden here");
-        }
-
-        if ($this->stage === Stage::WHERE_CONDITION_PHASE) {
+        if ($this->stage == Stage::TABLE_DEFINITION || $this->stage == Stage::WHERE_CONDITION_PHASE) {
             $this->shiftStage(Stage::GROUP_BY_PHASE);
         }
 

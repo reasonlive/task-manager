@@ -118,9 +118,8 @@ abstract class Model
      */
     public function findById(int $id, array $relations = []): ?array
     {
-        $query = Query::select()
-            ->setTable($this->table)
-            ->setAlias('t');
+        $query = Query::select($this->table)
+            ->from();
 
         if (count($relations) > 0) {
             foreach ($relations as $relation) {
@@ -128,9 +127,9 @@ abstract class Model
             }
         }
 
-        $query
-            ->enableParamsPreparation()
-            ->equals($this->primaryKey, $id);
+        $query->equals($this->primaryKey, $id);
+
+        //$query->dump();
 
         return $this->db->query($query->sql(), $query->params()) ?: null;
     }
@@ -171,13 +170,16 @@ abstract class Model
             return false;
         }
 
-        $setClause = implode(' = ?, ', array_keys($filteredData)) . ' = ?';
-        $sql = "UPDATE {$this->table} SET {$setClause} WHERE {$this->primaryKey} = ?";
+        $query = Query::update($this->table);
+        foreach ($filteredData as $field => $value) {
+            $query->setField($field, $value);
+        }
 
-        $params = array_values($filteredData);
-        $params[] = $id;
+        $query->equals($this->primaryKey, $id);
 
-        return $this->db->query($sql, $params) > 0;
+        //$query->dump();
+
+        return $this->db->query($query->sql(), $query->params()) > 0;
     }
 
     public function delete(int $id): bool
@@ -249,7 +251,7 @@ abstract class Model
             return $result;
         }
 
-        $result = array_filter($data, fn($item) => !empty($item));
+        $result = array_filter($data, fn($item) => !is_null($data));
         $result = array_intersect_key($result, array_flip($this->fillable));
 
         if (in_array($this->primaryKey, array_keys($data))) {

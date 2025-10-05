@@ -39,12 +39,6 @@ class UserController extends BaseController
 
         $users = Model::getInstance(User::class)->findAll($params, $sortParams);
 
-        /*if ($role || $isActive) {
-            $users = $this->getFilteredUsers($role, $isActive);
-        } else {
-            $users = Model::getInstance(User::class)->findAll();
-        }*/
-
         $this->render('admin/users/index.html.twig', ['users' => $users]);
     }
 
@@ -118,7 +112,6 @@ class UserController extends BaseController
         $user = $repository->findById($id);
         if (!$user) {
             $this->json(['success' => false, 'message' => 'User not found'], 404);
-            return;
         }
 
         $updated = ['updated_at' => date('Y-m-d H:i:s')];
@@ -128,7 +121,6 @@ class UserController extends BaseController
             $existingUser = $repository->findByEmail($data['email']);
             if ($existingUser && $existingUser['id'] != $id) {
                 $this->json(['success' => false, 'message' => 'User with this email already exists']);
-                return;
             }
 
             $updated['email'] = $data['email'];

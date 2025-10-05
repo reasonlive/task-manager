@@ -96,7 +96,7 @@ class AuthController extends BaseController
             return;
         }
 
-        $user = Model::getInstance(User::class)->findByEmail($email);
+        $user = User::getInstance()->findByEmail($email);
         if (!$user || !PasswordHasher::verify($password, $user['password'])) {
             $this->json(['success' => false, 'message' => 'Invalid username or password.'], 400);
         }

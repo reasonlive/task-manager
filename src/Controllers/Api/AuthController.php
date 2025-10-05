@@ -16,7 +16,7 @@ class AuthController extends BaseController
     {
         parent::__construct();
         $this->authService = new JwtService();
-        $this->userRepository = Model::getInstance(User::class);
+        $this->userRepository = User::getInstance();
     }
     public function register()
     {
@@ -46,6 +46,7 @@ class AuthController extends BaseController
     public function login()
     {
         $body = $this->request->getBody();
+
         if (!isset($body['email']) || !isset($body['password'])) {
             $this->json(['success' => false, 'error' => 'Email and password cannot be empty.'], 400);
         }

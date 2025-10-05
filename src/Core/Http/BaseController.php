@@ -80,5 +80,7 @@ abstract class BaseController
     protected function render(string $template, array $data = []): void
     {
         echo $this->view->render($template, $data);
+        $this->response->setStatusCode(200);
+        exit;
     }
 }

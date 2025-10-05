@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace App\Models;
 
+use App\Core\Data\DQL\Query;
+
 class User extends Model
 {
     protected string $table = 'users';
@@ -45,12 +47,11 @@ class User extends Model
 
     public function findByEmail(string $email): ?array
     {
-        $user = $this->firstWhere('email', $email);
-        /*if (isset($user['password'])) {
-            unset($user['password']);
-        }*/
+        $query = Query::select($this->table)
+            ->from()
+            ->equals('email', $email);
 
-        return $user;
+        return $this->db->query($query->sql(), $query->params())[0];
     }
 
     public static function isAdmin(mixed $data): bool
