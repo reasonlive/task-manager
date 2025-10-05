@@ -16,7 +16,8 @@
   "require": {
     "php": ">=8.3",
     "twig/twig": "^3.0",
-    "ext-http": "*"
+    "ext-http": "*",
+    "ext-pdo": "*"
   },
   "autoload": {
     "psr-4": {

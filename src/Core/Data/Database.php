@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace App\Core\Data;
 
+use App\Core\Data\DQL\Operation;
 use App\Core\Env;
 use PDO;
 use PDOException;
@@ -54,6 +55,10 @@ class Database
 
     public function query(string $sql, ?array $params = null): \PDOStatement
     {
+        if (str_starts_with($sql, Operation::SELECT->value)) {
+            $sql = $this->analizeAndPrepare($sql);
+        }
+
         $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
         return $stmt;
@@ -85,5 +90,66 @@ class Database
         $database = Env::get('DB_NAME');
         $sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='$database' AND TABLE_NAME='$tableName' ORDER BY ORDINAL_POSITION";
         return $this->connection->query($sql)->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    private function getIntersectingFieldAliases(array $tables): array
+    {
+        $database = Env::get('DB_NAME');
+
+        $sql = '';
+        $i = 1;
+        foreach ($tables as $table => $alias) {
+            $sql .= "SELECT CONCAT('{$alias}.', COLUMN_NAME, ' AS {$table}_', COLUMN_NAME) as column_alias
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = '{$database}' AND TABLE_NAME = '{$table}'";
+
+            if ($i < count($tables)) {
+                $sql .= " UNION ALL ";
+            }
+
+            $i++;
+        }
+
+        return $this->connection->query($sql)->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Analize SELECT queries for matching * signs
+     * @param string $sql
+     * @return string
+     */
+    private function analizeAndPrepare(string $sql): string
+    {
+        $tables = [];
+        $aliases = [];
+
+        preg_match_all('/(\w+)\.\*/', $sql, $matches, PREG_SET_ORDER);
+        if (count($matches) > 0) {
+            foreach ($matches as $match) {
+                $aliases[] = $match[1];
+            }
+            preg_match('/FROM\s(\w+)/', $sql, $matches);
+            $tables[] = $matches[1];
+
+            preg_match_all('/JOIN\s+(\w+)/i', $sql, $matches, PREG_SET_ORDER);
+            foreach ($matches as $match) {
+                $tables[] = $match[1];
+            }
+
+            if (count($tables) !== count($aliases)) {
+                $tables = array_filter($tables, fn($item) =>
+                !(str_contains($item, '_')
+                    && (!in_array(explode('_', $item)[0], $tables)
+                    || !in_array(explode('_', $item)[1], $tables))
+                ));
+            }
+
+            $tables = array_combine($tables, $aliases);
+            $fieldsString = implode(',', $this->getIntersectingFieldAliases($tables));
+
+            return "SELECT " . $fieldsString . " " . substr($sql, strpos($sql, 'FROM'));
+        }
+
+        return $sql;
     }
 }
