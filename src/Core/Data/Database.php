@@ -56,7 +56,7 @@ class Database
     public function query(string $sql, ?array $params = null): \PDOStatement
     {
         if (str_starts_with($sql, Operation::SELECT->value)) {
-            $sql = $this->analizeAndPrepare($sql);
+            $sql = $this->analyzeAndPrepare($sql);
         }
 
         $stmt = $this->connection->prepare($sql);
@@ -114,17 +114,17 @@ class Database
     }
 
     /**
-     * Analize SELECT queries for matching * signs
+     * Analyze SELECT queries for matching * signs
      * @param string $sql
      * @return string
      */
-    private function analizeAndPrepare(string $sql): string
+    private function analyzeAndPrepare(string $sql): string
     {
         $tables = [];
         $aliases = [];
 
         preg_match_all('/(\w+)\.\*/', $sql, $matches, PREG_SET_ORDER);
-        if (count($matches) > 0) {
+        if (count($matches) > 1) { // if not only main table is present
             foreach ($matches as $match) {
                 $aliases[] = $match[1];
             }

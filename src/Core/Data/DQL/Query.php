@@ -221,10 +221,10 @@ class Query
     }
 
     /**
-     * Set fields for insert, update operations <br>
-     * For select use setSelectedField(), this method turns value into alias name though
+     * Set fields for select, insert, update operations <br>
+     * Warning For select operation, this method turns value into alias name
      * @param string $fieldName
-     * @param mixed|null $fieldValue
+     * @param mixed|null $fieldValue for insert/update
      * @return $this
      * @throws \Exception
      */
@@ -429,6 +429,15 @@ class Query
         return $this;
     }
 
+    /**
+     * For relational table's fields
+     * @param string $relation
+     * @param string $fieldName
+     * @param string $alias
+     * @param Aggregation|null $aggregation
+     * @return $this
+     * @throws \Exception
+     */
     public function setSelectedField(
         string $relation,
         string $fieldName,
