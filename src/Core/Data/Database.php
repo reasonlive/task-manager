@@ -79,4 +79,11 @@ class Database
     {
         return $this->connection->rollBack();
     }
+
+    public function getTableFields(string $tableName): array
+    {
+        $database = Env::get('DB_NAME');
+        $sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='$database' AND TABLE_NAME='$tableName' ORDER BY ORDINAL_POSITION";
+        return $this->connection->query($sql)->fetchAll(\PDO::FETCH_COLUMN);
+    }
 }
