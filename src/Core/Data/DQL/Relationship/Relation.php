@@ -18,7 +18,7 @@ abstract class Relation
      * @param string $joinType
      * @return $this
      */
-    public abstract function build(string $table, string $joinType): static;
+    public abstract function build(string $table, ?string $joinType): static;
     public function getFields(): array
     {
         return $this->fields;

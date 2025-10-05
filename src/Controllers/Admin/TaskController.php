@@ -65,13 +65,7 @@ class TaskController extends BaseController
      */
     public function show(int $id): void
     {
-        $task = Task::getInstance()->findById($id, [
-            (new ManyToOne('users', 'u', 'user_id'))
-                ->setField('name', 'username')
-                ->setField('email', 'email'),
-            (new ManyToMany('tags', 'task_tags', 'task_id', 'tag_id'))
-                ->setField('name', 'tag')
-        ]);
+        $task = Task::getInstance()->findById($id);
 
         if (!$task) {
             $this->response->setStatusCode(404);

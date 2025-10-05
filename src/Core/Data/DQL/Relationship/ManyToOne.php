@@ -13,7 +13,7 @@ class ManyToOne extends Relation
     {
         $this->type = RelationType::MANY_TO_ONE;
     }
-    public function build(string $table, string $joinType): static
+    public function build(string $table, ?string $joinType = null): static
     {
         $this->sql = "$joinType $this->relation AS $this->alias ON $table.$this->fk = $this->alias.id";
         return $this;
