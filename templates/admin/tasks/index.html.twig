@@ -29,7 +29,7 @@
             <thead class="table-dark">
             <tr>
                 <th>
-                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                    <a href="?sort=id&order={{ sort_field == 'id' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}"
                        class="text-white text-decoration-none d-flex align-items-center">
                         ID
                         {% if sort_field == 'id' %}
@@ -45,7 +45,7 @@
                 <th>User</th>
                 <th>Tags</th>
                 <th>
-                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}{{ existing_filters }}"
+                    <a href="?sort=created_at&order={{ sort_field == 'created_at' and sort_order|lower == 'asc' ? 'desc' : 'asc' }}"
                        class="text-white text-decoration-none d-flex align-items-center">
                         Created
                         {% if sort_field == 'created_at' %}
@@ -63,10 +63,10 @@
                 <tr class="status-{{ task.status|lower|replace({'_': '-'}) }}">
                     <td>{{ task.id }}</td>
                     <td>
-                        <strong>{{ task.title }}</strong>
+                        <strong>{{ task.title|slice(0, 10) }}</strong>
                     </td>
                     <td>
-                        <small class="text-muted">{{ task.description|slice(0, 50) }}{% if task.description|length > 50 %}...{% endif %}</small>
+                        <small class="text-muted">{{ task.description|slice(0, 10) }}{% if task.description|length > 10 %}...{% endif %}</small>
                     </td>
                     <td>
                         <select class="form-select form-select-sm" onchange="updateTaskStatus({{ task.id }}, this.value)">
@@ -79,10 +79,9 @@
                         <span class="badge bg-info">{{ task.username }}</span>
                     </td>
                     <td>
-                        {% if task.tag %}
-                            {% set tag_list = task.tag|split(',') %}
-                            {% for tag in tag_list %}
-                                <span class="badge bg-secondary me-1">{{ tag }}</span>
+                        {% if task.tags %}
+                            {% for tag in task.tags %}
+                                <span class="badge bg-secondary me-1">{{ tag.name }}</span>
                             {% endfor %}
                         {% else %}
                             <span class="text-muted">No tags</span>
@@ -105,7 +104,7 @@
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
-                                    data-bs-target="#tagsModal" data-task-id="{{ task.id }}" data-task-tags="{{ task.tags }}">
+                                    data-bs-target="#tagsModal" data-task-id="{{ task.id }}" data-task-tags="">
                                 <i class="bi bi-tags"></i>
                             </button>
                         </div>
@@ -127,20 +126,20 @@
     {% if total_pages > 1 %}
         <nav aria-label="Tasks pagination">
             <ul class="pagination justify-content-center">
-                <li class="page-item {{ current_page == 1 ? 'disabled' : '' }}">
-                    <a class="page-link" href="?page={{ current_page - 1 }}{{ existing_filters }}{{ sort_query }}" aria-label="Previous">
+                <li class="page-item {{ А == 1 ? 'disabled' : '' }}">
+                    <a class="page-link" href="?page={{ current_page - 1 }}{{ sort_query }}" aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
 
                 {% for page in 1..total_pages %}
                     <li class="page-item {{ page == current_page ? 'active' : '' }}">
-                        <a class="page-link" href="?page={{ page }}{{ existing_filters }}{{ sort_query }}">{{ page }}</a>
+                        <a class="page-link" href="?page={{ page }}{{ sort_query }}">{{ page }}</a>
                     </li>
                 {% endfor %}
 
                 <li class="page-item {{ current_page == total_pages ? 'disabled' : '' }}">
-                    <a class="page-link" href="?page={{ current_page + 1 }}{{ existing_filters }}{{ sort_query }}" aria-label="Next">
+                    <a class="page-link" href="?page={{ current_page + 1 }}{{ sort_query }}" aria-label="Next">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
@@ -188,8 +187,8 @@
                             <div>
                                 {% for tag in available_tags %}
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="createTag{{ tag.name }}" name="tags[]" value="{{ tag.name }}">
-                                        <label class="form-check-label" for="createTag{{ tag.name }}">{{ tag.name }}</label>
+                                        <input class="form-check-input" type="checkbox" id="createTag{{ tag }}" name="tags[]" value="{{ tag }}">
+                                        <label class="form-check-label" for="createTag{{ tag }}">{{ tag }}</label>
                                     </div>
                                 {% endfor %}
                             </div>
@@ -288,7 +287,7 @@
                             <select class="form-select" id="tagFilter" name="tag">
                                 <option value="">All Tags</option>
                                 {% for tag in available_tags %}
-                                    <option value="{{ tag.name }}" {{ current_filters.tag == tag.name ? 'selected' : '' }}>{{ tag.name }}</option>
+                                    <option value="{{ tag }}" {{ current_filters.tag == tag ? 'selected' : '' }}>{{ tag }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -352,14 +351,14 @@
             tagsList.innerHTML = '';
 
             availableTags.forEach(tag => {
-                const isActive = currentTags.includes(tag.name);
+                const isActive = currentTags.includes(tag);
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = `btn ${isActive ? 'btn-primary' : 'btn-outline-primary'} me-2 mb-2`;
-                button.textContent = tag.name;
+                button.textContent = tag;
                 button.onclick = function() {
                     const action = isActive ? 'remove' : 'add';
-                    toggleTaskTag(taskId, tag.name, action);
+                    toggleTaskTag(taskId, tag, action);
                 };
                 tagsList.appendChild(button);
             });

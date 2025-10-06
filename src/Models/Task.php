@@ -19,12 +19,13 @@ class Task extends Model
 
     public function findAllWithRelations($userId, $status, $tag, $sort, $order): ?array
     {
-        $query = Query::select()
-            ->enableParamsPreparation()
-            ->from('tasks', 't')
+        $query = Query::select('tasks')->from()
             ->innerJoin('users', 'u', 'user_id')
+            //->setSelectedField('users', 'id', 'user_id')
             ->setSelectedField('users', 'name', 'username')
-            ->manyToManyJoin('tags', 'task_tags', 'task_id', 'tag_id');
+            ->manyToManyJoin('tags', 'task_tags', 'task_id', 'tag_id')
+            ->setSelectedField('tags', ['id', 'name'], 'tags', Aggregation::JSON_AGG)
+        ;
 
         if ($userId) {
             $query->and('user_id', $userId);
@@ -34,18 +35,22 @@ class Task extends Model
             $query->and('status', $status);
         }
 
-        $query
-            ->withoutConditions()
-            ->group('tasks', 'id')
-            ->setSelectedField('tags', 'name', 'tag', Aggregation::GROUP_CONCAT);
+        $query->group('tasks', 'id');
 
         if ($sort && $order) {
             $query->order($sort, $order);
         }
 
-        //$query->dump();
+        $result = $this->db->query($query->sql(), $query->params()) ?? null;
 
-        return $this->db->query($query->sql(), $query->params()) ?? null;
+        if ($result) {
+            foreach ($result as &$task) {
+                $tags = json_decode($task['tags'], true);
+                $task['tags'] = $tags;
+            }
+        }
+
+        return $result;
     }
 
     public function addTag(int $taskId, int $tagId): bool

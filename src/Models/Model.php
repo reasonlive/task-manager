@@ -209,34 +209,9 @@ abstract class Model
      */
     public function count(array $params = []): int
     {
-        $data = [];
-        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        $query = Query::select($this->table)->from()->count();
 
-        if (count($params) > 0) {
-            $data = $this->filterData($params);
-            $count = count($data);
-
-
-            if ($count > 0) {
-                $sql .= " WHERE ";
-            }
-
-            $i = 1;
-            foreach ($data as $key => $value) {
-                if ($i < $count) {
-                    $sql .= "{$key} = ? AND ";
-                }
-                else {
-                    $sql .= "{$key} = ?";
-                }
-
-                $i++;
-            }
-
-            $data = array_values($data);
-        }
-
-        return $this->db->query($sql, $data)['count'] ?? 0;
+        return $this->db->query($query->sql())['count'] ?? 0;
     }
 
     /**

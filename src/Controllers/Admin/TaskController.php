@@ -43,11 +43,14 @@ class TaskController extends BaseController
             $order
         );
 
+
+
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
             'statuses' => TaskStatus::names(),
+            'total_pages' => ceil(count($tasks) / 10),
             'available_users' => User::getInstance()->findByRole('MODERATOR'),
-            'available_tags' => Tag::getInstance()->findAll(),
+            'available_tags' => array_map(fn($tag) => $tag['name'], Tag::getInstance()->findAll()),
             'sort_field' => $sort,
             'sort_order' => $order,
             'current_filters' => [

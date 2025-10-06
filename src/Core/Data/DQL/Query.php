@@ -678,12 +678,6 @@ class Query
 
     public function order(string $field, string $direction = self::ORDER_DESC): self
     {
-        if ($this->stage !== Stage::ORDER_RECORDS_PHASE
-            && ($this->stage !== Stage::HAVING_PHASE && $this->stage !== Stage::GROUP_BY_PHASE)
-        ) {
-            throw new \Exception("Order clause is forbidden here");
-        }
-
         if ($this->stage !== Stage::ORDER_RECORDS_PHASE) {
             $this->shiftStage(Stage::ORDER_RECORDS_PHASE);
         }

@@ -14,6 +14,7 @@ class View
     {
         $loader = new FilesystemLoader($templatePath);
         $this->twig = new Environment($loader, [
+            //'error_reporting' => E_ALL & ~E_WARNING, // или E_ERROR для полного отключения
             'cache' => false, // В продакшене установите путь к кэшу
             'debug' => true,
         ]);
