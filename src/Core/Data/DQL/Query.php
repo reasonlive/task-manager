@@ -368,6 +368,18 @@ class Query
         return $this;
     }
 
+    public function count(): self
+    {
+        if ($this->operation !== Operation::SELECT) {
+            throw new \Exception("Forbidden method: " . __METHOD__);
+        }
+
+        $this->buffer = ["{$this->operation->value} COUNT($this->alias.id) AS count FROM $this->table AS $this->alias"];
+        return $this;
+    }
+
+
+
     private function join(
         string $tableName,
         string $alias,
