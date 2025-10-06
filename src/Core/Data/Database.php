@@ -144,6 +144,7 @@ class Database
                 $tables[] = $match[1];
             }
 
+            // delete from $tables mediator table
             if (count($tables) !== count($aliases)) {
                 $tables = array_filter($tables, fn($item) =>
                 !(str_contains($item, '_')
@@ -152,10 +153,23 @@ class Database
                 ));
             }
 
-            $tables = array_combine($tables, $aliases);
+            // add table regarding its alias
+            if ($aliases < $tables) {
+                $buff = [];
+
+                foreach ($aliases as $i => $alias) {
+                    $buff[$tables[$i]] = $alias;
+                }
+
+                $tables = $buff;
+            }
+            else {
+                $tables = array_combine($tables, $aliases);
+            }
+
             $fieldsString = implode(',', $this->getIntersectingFieldAliases($tables));
 
-            return "SELECT " . $fieldsString . " " . substr($sql, strpos($sql, 'FROM'));
+            return "SELECT " . $fieldsString . " " . substr($sql, strrpos($sql, '.*') + 2);
         }
 
         return $sql;

@@ -4,6 +4,7 @@ namespace App\Core\Data\DQL;
 
 use App\Core\Data\DQL\Relationship\ManyToMany;
 use App\Core\Data\DQL\Relationship\ManyToOne;
+use App\Core\Data\DQL\Relationship\OneToMany;
 use App\Core\Data\DQL\Relationship\Relation;
 
 class Query
@@ -38,7 +39,7 @@ class Query
     private array $buffer = [];
     private static bool $ENABLE_PDO_PREPARATION = false;
     private static bool $WHERE_CONDITION_STARTED = false;
-
+    private static bool $GROUPING_REQUIRED = false;
     public function __construct(Operation $operation = Operation::SELECT)
     {
         $this->operation = $operation;
@@ -219,6 +220,15 @@ class Query
         return $this->table === $table ? $this->alias : $this->getRelationAlias($table);
     }
 
+    private function getRelationAlias(string $relation): ?string
+    {
+        if (isset($this->relations[$relation])) {
+            return $this->relations[$relation]->alias;
+        }
+
+        return null;
+    }
+
     /**
      * Set fields for select, insert, update operations <br>
      * Warning For select operation, this method turns value into alias name
@@ -259,7 +269,7 @@ class Query
                 }
 
                 if ($i < count($this->fields)) {
-                    $item .= ', ';
+                    $item .= ',';
                 }
 
                 $this->buffer[] = $item;
@@ -366,7 +376,18 @@ class Query
     ): self
     {
         if ($this->stage === Stage::TABLE_DEFINITION) {
-            $relation = new ManyToOne($tableName, $alias, $fk);
+            $fk_chunk = explode('_', $fk)[0];
+
+            if (str_contains($tableName, $fk_chunk)) {
+                $relation = new ManyToOne($tableName, $alias, $fk);
+            }
+            else if (str_contains($this->table, $fk_chunk)) {
+                $relation = new OneToMany($tableName, $alias, $fk);
+            }
+            else {
+                throw new \Exception("Forbidden method: " . __METHOD__);
+            }
+
             $this->buffer[] = $relation->build($this->alias, $type)->sql();
             $this->relations[$relation->relation] = $relation;
         }
@@ -430,35 +451,38 @@ class Query
 
     /**
      * For relational table's fields
-     * @param string $relation
-     * @param string $fieldName
+     * @param string $table
+     * @param string|array $fieldName array of field's names for json representation
      * @param string $alias
      * @param Aggregation|null $aggregation
      * @return $this
      * @throws \Exception
      */
     public function setSelectedField(
-        string $relation,
-        string $fieldName,
+        string $table,
+        string|array $fieldName,
         string $alias,
         ?Aggregation $aggregation = null
     ): self
     {
-        if ($aggregation && $this->stage !== Stage::GROUP_BY_PHASE) {
-            throw new \Exception("Aggregation is not supported in this stage");
-        }
-
         if ($this->stage === Stage::TABLE_DEFINITION) {
-            if (isset($this->relations[$relation])) {
-                $this->relations[$relation]->setField($fieldName, $alias);
-            }
-        }
-        else if ($this->stage === Stage::GROUP_BY_PHASE && $aggregation) {
-            if (isset($this->relations[$relation])) {
-                $t = $this->getRelationAlias($relation) ?? $relation;
-                $field = $aggregation->value . "($t.$fieldName)";
+            if (isset($this->relations[$table])) {
+                $field = $fieldName;
 
-                $this->relations[$relation]->setField($field, $alias);
+                if ($aggregation) {
+                    self::$GROUPING_REQUIRED = true;
+                    $t = $this->getAlias($table) ?? $table;
+
+                    if (is_string($fieldName)) {
+                        $field = $aggregation->value . "($t.$fieldName)";
+                    }
+                    else if (is_array($fieldName)) {
+                        $fieldsString = Aggregation::transformToJsonClause($fieldName, $t);
+                        $field = $aggregation->value . "($fieldsString)";
+                    }
+                }
+
+                $this->relations[$table]->setField($field, $alias);
             }
         }
 
@@ -471,21 +495,6 @@ class Query
         return $this;
     }
 
-    public function withoutGrouping(): self
-    {
-        $this->stage = Stage::ORDER_RECORDS_PHASE;
-        return $this;
-    }
-
-    private function getRelationAlias(string $relation): ?string
-    {
-        if (isset($this->relations[$relation])) {
-            return $this->relations[$relation]->alias;
-        }
-
-        return null;
-    }
-
     private function where(mixed $field, Comparison $operator, mixed $value, ?string $relatedTable = null): self
     {
         if ($this->stage == Stage::FIELD_INITIALIZATION || $this->stage == Stage::TABLE_DEFINITION) {
@@ -495,13 +504,16 @@ class Query
         if ($relatedTable && $alias = $this->getRelationAlias($relatedTable)) {
             $field = $alias . ".$field";
         }
+        else {
+            $field = $this->alias . ".$field";
+        }
 
         if (self::$ENABLE_PDO_PREPARATION) {
-            $this->buffer[] = "$this->alias.$field " . $operator->value . " ?";
+            $this->buffer[] = "$field $operator->value ?";
             $this->params[] = $value;
         }
         else {
-            $this->buffer[] = "$this->alias.$field " . $operator->value . " $value";
+            $this->buffer[] = "$field $operator->value $value";
         }
 
         self::$WHERE_CONDITION_STARTED = true;
@@ -637,12 +649,17 @@ class Query
 
     public function group(string $table, string $field): self
     {
+        $t = $this->getAlias($table);
+
         if ($this->stage == Stage::TABLE_DEFINITION || $this->stage == Stage::WHERE_CONDITION_PHASE) {
             $this->shiftStage(Stage::GROUP_BY_PHASE);
+            $value = "$t.$field";
+        }
+        else {
+            $value = ", $t.$field";
         }
 
-        $t = $this->getAlias($table);
-        $this->buffer[] = "$t.$field";
+        $this->buffer[] = $value;
 
         return $this;
     }
@@ -726,6 +743,11 @@ class Query
 
         // check if relations has some fields to select
         if (count($this->relations) && $this->operation === Operation::SELECT) {
+
+            if (self::$GROUPING_REQUIRED && !array_search(self::GROUP, $this->buffer)) {
+                throw new \Exception("GROUP BY clause required");
+            }
+
             $pos = array_search(self::FROM, $this->buffer);
             $leftPart = array_slice($this->buffer, 0, $pos, true);
             $rightPart = array_slice($this->buffer, $pos, null, true);

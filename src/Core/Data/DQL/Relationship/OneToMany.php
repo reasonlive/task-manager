@@ -2,7 +2,9 @@
 
 namespace App\Core\Data\DQL\Relationship;
 
-class ManyToOne extends Relation
+use App\Core\Data\DQL\Relationship\Relation;
+
+class OneToMany extends Relation
 {
     /**
      * @param string $relation Related table
@@ -11,18 +13,12 @@ class ManyToOne extends Relation
      */
     public function __construct(public string $relation, public string $alias, public string $fk)
     {
-        $this->type = RelationType::MANY_TO_ONE;
+        $this->type = RelationType::ONE_TO_MANY;
     }
 
-    /**
-     * Builds join string
-     * @param string $table table name or table alias
-     * @param string|null $joinType
-     * @return $this
-     */
     public function build(string $table, ?string $joinType = null): static
     {
-        $this->sql = "$joinType $this->relation AS $this->alias ON $table.$this->fk = $this->alias.id";
+        $this->sql = "$joinType $this->relation AS $this->alias ON $table.id = $this->alias.$this->fk";
         return $this;
     }
 }
