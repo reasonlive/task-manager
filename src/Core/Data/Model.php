@@ -10,7 +10,7 @@ use App\Core\Data\DQL\Query;
  class Model
 {
     private static string $schemaPath;
-    protected static string $primaryKey = 'id';
+    public static string $primaryKey = 'id';
     private Database $db;
 
     protected string $table;
@@ -87,9 +87,19 @@ use App\Core\Data\DQL\Query;
         $instance = new static(false);
         $query = Query::select($instance->getTable())->from()->equals(self::$primaryKey, $id);
 
-        $data = Database::getInstance()->query($query->sql(), $query->params());
+        return self::transform(Database::getInstance()->query($query->sql(), $query->params()));
+    }
 
-        if ($data && count($data) < 2) {
+     /**
+      * Transform data into object
+      * @param array|null $data
+      * @return Model|null
+      */
+    public static function transform(?array $data): ?Model
+    {
+        $instance = new static(false);
+
+        if ($data && count($data) == 1) {
             $data = reset($data);
 
             foreach ($data as $key => $value) {
@@ -135,10 +145,10 @@ use App\Core\Data\DQL\Query;
         return false;
     }
 
-    protected function delete(int $id): int
+    public function delete(): int
     {
         $query = Query::delete($this->table)
-            ->equals(self::$primaryKey, $id);
+            ->equals(self::$primaryKey, $this->fields[self::$primaryKey]);
         ;
 
         return $this->db->query($query->sql(), $query->params());

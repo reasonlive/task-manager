@@ -22,8 +22,8 @@ class Query
     private const string OFFSET = 'OFFSET';
     private const string ORDER = 'ORDER BY';
 
-    private const string ORDER_ASC = 'ASC';
-    private const string ORDER_DESC = 'DESC';
+    public const string ORDER_ASC = 'ASC';
+    public const string ORDER_DESC = 'DESC';
 
     /** @var string|null main table name */
     private ?string $table = null;
