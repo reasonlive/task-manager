@@ -7,20 +7,19 @@ use App\Core\Data\DQL\Query;
 /**
  * @method id()
  */
- class Model
+abstract class Model
 {
     private static string $schemaPath;
     public static string $primaryKey = 'id';
     private Database $db;
 
-    protected string $table;
+    protected ?string $table = null;
     protected array $fields;
 
-    protected function __construct(private bool $new = true)
+    public function __construct(private bool $new = true)
     {
         self::$schemaPath = realpath(__DIR__ . '/../../../db/schema/');
         $this->db = Database::getInstance();
-        $this->table = 'tasks';
 
         if ($data = @file_get_contents(self::$schemaPath . '/' . $this->table . '.schema')) {
             $schema = unserialize($data);
@@ -49,8 +48,13 @@ use App\Core\Data\DQL\Query;
 
     public function __call($name, $arguments)
     {
+        if (is_null($this->table)) {
+            throw new \Exception('Model table must be defined');
+        }
+
         if (count($arguments) == 1 && in_array($name, array_keys($this->fields))) {
-            if ($name === self::$primaryKey && get_called_class() !== self::class) {
+
+            if ($name === static::$primaryKey && __CLASS__ !== self::class) {
                 throw new \Exception('Model primary key cannot be set');
             }
 
@@ -85,9 +89,14 @@ use App\Core\Data\DQL\Query;
     public static function load(int $id): ?Model
     {
         $instance = new static(false);
-        $query = Query::select($instance->getTable())->from()->equals(self::$primaryKey, $id);
+        $query = Query::select($instance->getTable())->from()->equals(static::$primaryKey, $id);
+        $data = Database::getInstance()->query($query->sql(), $query->params());
 
-        return self::transform(Database::getInstance()->query($query->sql(), $query->params()));
+        if ($data && !isset($data['id'])) {
+            $data = $data[0];
+        }
+
+        return self::transform($data);
     }
 
      /**
@@ -99,9 +108,7 @@ use App\Core\Data\DQL\Query;
     {
         $instance = new static(false);
 
-        if ($data && count($data) == 1) {
-            $data = reset($data);
-
+        if ($data) {
             foreach ($data as $key => $value) {
                 $instance->{$key}($value);
             }

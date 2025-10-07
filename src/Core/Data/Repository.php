@@ -12,24 +12,21 @@ abstract class Repository
     public function __construct(protected string $modelClass)
     {
         $this->table = (new $this->modelClass())->getTable();
+        $this->db = Database::getInstance();
     }
 
     /**
      * TODO: add filtration by params
      * @param array $params
-     * @return array
+     * @return Model[]
      * @throws \Exception
      */
     public function findAll(array $params = []): array
     {
         $query = Query::select($this->table)->from()
-            ->order(Model::$primaryKey);
+            ->order($this->modelClass::$primaryKey);
 
-        if ($result = $this->db->query($query->sql(), $query->params())) {
-            return array_map(fn($item) => Model::transform($item), $result);
-        }
-
-        return [];
+        return $this->query($query, false);
     }
 
     public function getIds(?string $field = null, array $values = []): array
@@ -44,13 +41,14 @@ abstract class Repository
             return $this->modelClass::load($id);
         }
 
-        $query = Query::select(static::$table)->from();
+        $query = Query::select($this->table)->from();
         foreach ($relations as $relation) {
             $query->setRelation($relation);
         }
 
-        $query->equals('id', $id);
-        return Model::transform($this->db->query($query->sql(), $query->params()));
+        $query->equals($this->modelClass::$primaryKey, $id);
+
+        return $this->query($query, true);
     }
 
     public function create(array $data = []): ?int
@@ -102,12 +100,7 @@ abstract class Repository
         $query = Query::select($this->table)->from()
             ->equals($field, $value);
 
-        $result = $this->db->query($query->sql(), $query->params());
-        if (count($result)) {
-            return array_map(fn($item) => Model::transform($item), $result);
-        }
-
-        return [];
+        return $this->query($query, false);
     }
 
     /**
@@ -120,11 +113,10 @@ abstract class Repository
     {
         $query = Query::select($this->table)->from()
             ->equals($field, $value)
-            ->order(Model::$primaryKey, Query::ORDER_ASC)
+            ->order($this->modelClass::$primaryKey, Query::ORDER_ASC)
             ->limit(1);
 
-        $result = $this->db->query($query->sql(), $query->params());
-        return Model::transform($result[0]);
+        return $this->query($query, true);
     }
 
     /**
@@ -151,5 +143,24 @@ abstract class Repository
     public function rollBack(): bool
     {
         return $this->db->rollBack();
+    }
+
+    /**
+     * @param Query $query
+     * @param bool $single
+     * @return Model|Model[]
+     */
+    protected function query(Query $query, bool $single): array
+    {
+        $result = $this->db->query($query->sql(), $query->params());
+        if (count($result)) {
+            if ($single && isset($result[0])) {
+                return $this->modelClass::transform($result[0]);
+            }
+
+            return array_map(fn($item) => $this->modelClass::transform($item), $result);
+        }
+
+        return [];
     }
 }
