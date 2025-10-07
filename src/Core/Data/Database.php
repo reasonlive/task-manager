@@ -93,6 +93,11 @@ class Database
         return $this->connection->rollBack();
     }
 
+    /**
+     * One Select Query
+     * @param string $tableName
+     * @return array
+     */
     public function getTableFields(string $tableName): array
     {
         $database = Env::get('DB_NAME');
@@ -100,6 +105,11 @@ class Database
         return $this->connection->query($sql)->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /**
+     * If it needs to query all table fields by .*
+     * @param array $tables [$table_name => $table_alias]
+     * @return array
+     */
     private function getIntersectingFieldAliases(array $tables): array
     {
         $database = Env::get('DB_NAME');
