@@ -11,15 +11,19 @@ use App\Models\Reply;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\ReplyRepository;
+use App\Repositories\TaskRepository;
 
 class TaskController extends BaseController
 {
     public bool $admin = true;
-    private Task $taskRepository;
+    private TaskRepository $taskRepository;
+    private ReplyRepository $replyRepository;
 
     public function __construct() {
         parent::__construct();
-        $this->taskRepository = Task::getInstance();
+        $this->taskRepository = new TaskRepository();
+        $this->replyRepository = new ReplyRepository();
     }
 
     /**
@@ -35,15 +39,7 @@ class TaskController extends BaseController
         $sort = $this->request->get('sort', 'id');
         $order = strtoupper($this->request->get('order', 'DESC'));
 
-        $tasks = Task::getInstance()->findAllWithRelations(
-            $user,
-            $status,
-            $tag,
-            $sort,
-            $order
-        );
-
-
+        $tasks = $this->taskRepository->findAll();
 
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
@@ -68,7 +64,7 @@ class TaskController extends BaseController
      */
     public function show(int $id): void
     {
-        $task = Task::getInstance()->findById($id);
+        $task = $this->taskRepository->find($id);
 
         if (!$task) {
             $this->response->setStatusCode(404);
@@ -76,7 +72,7 @@ class TaskController extends BaseController
             return;
         }
 
-        $replies = Model::getInstance(Reply::class)->findByTaskId($id);
+        $replies = $this->replyRepository->findByTaskId($task->id());
 
         $this->render('admin/tasks/show.html.twig', [
             'task' => $task,
