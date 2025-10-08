@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Core\Auth;
 
 use App\Core\Env;
+use App\Models\User;
 use InvalidArgumentException;
 
 class SessionService
@@ -54,10 +55,10 @@ class SessionService
     /**
      * Аутентификация пользователя
      */
-    public function login(array $userData): bool
+    public function login(User $user): bool
     {
         // Базовая валидация данных пользователя
-        if (empty($userData['id']) || empty($userData['email'])) {
+        if (empty($user->id()) || empty($user->email())) {
             throw new InvalidArgumentException('User data must contain id and email');
         }
 
@@ -65,10 +66,10 @@ class SessionService
         //$this->logout();
         // Сохраняем данные пользователя
         $_SESSION[$this->sessionKey] = [
-            'id' => (int)$userData['id'],
-            'name' => $userData['name'] ?? "noname",
-            'email' => $userData['email'],
-            'role' => $userData['role'] ?? 'USER',
+            'id' => (int)$user->id(),
+            'name' => $user->name() ?? "noname",
+            'email' => $user->email(),
+            'role' => $user->role() ?? 'USER',
             'login_time' => time(),
             'last_activity' => time(),
             'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',

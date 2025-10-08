@@ -3,17 +3,18 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Http\BaseController;
-use App\Models\Model;
 use App\Models\User;
+use App\Repositories\UserRepository;
 use App\Utils\PasswordHasher;
 
 class AuthController extends BaseController
 {
-    protected User $userRepository;
+    protected UserRepository $userRepository;
     public function __construct()
     {
+
         parent::__construct();
-        $this->userRepository = Model::getInstance(User::class);
+        $this->userRepository = new UserRepository();
     }
 
     /**
@@ -96,8 +97,8 @@ class AuthController extends BaseController
             return;
         }
 
-        $user = User::getInstance()->findByEmail($email);
-        if (!$user || !PasswordHasher::verify($password, $user['password'])) {
+        $user = $this->userRepository->findByEmail($email);
+        if (!$user || !PasswordHasher::verify($password, $user->password())) {
             $this->json(['success' => false, 'message' => 'Invalid username or password.'], 400);
         }
 

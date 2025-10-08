@@ -3,6 +3,7 @@
 namespace App\Core\Http;
 
 use App\Core\Auth\SessionService;
+use App\Models\User;
 use App\Views\View;
 
 abstract class BaseController
@@ -14,7 +15,7 @@ abstract class BaseController
 
     public bool $admin = false; // need for checking admin access
     public bool $api = false; // need for checking api access
-    protected ?array $authenticatedUser = null;
+    protected ?User $authenticatedUser = null;
 
     public function __construct()
     {
@@ -49,12 +50,12 @@ abstract class BaseController
         return $this->session;
     }
 
-    public function getUser(): ?array
+    public function getUser(): ?User
     {
         return $this->authenticatedUser;
     }
 
-    public function setUser(?array $authenticatedUser): static
+    public function setUser(User $authenticatedUser): static
     {
         $this->authenticatedUser = $authenticatedUser;
         return $this;

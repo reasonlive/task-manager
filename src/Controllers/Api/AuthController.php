@@ -4,19 +4,19 @@ namespace App\Controllers\Api;
 
 use App\Core\Auth\JwtService;
 use App\Core\Http\BaseController;
-use App\Models\Model;
 use App\Models\User;
+use App\Repositories\UserRepository;
 use App\Utils\PasswordHasher;
 
 class AuthController extends BaseController
 {
     private JwtService $authService;
-    private User $userRepository;
+    private UserRepository $userRepository;
     public function __construct()
     {
         parent::__construct();
         $this->authService = new JwtService();
-        $this->userRepository = User::getInstance();
+        $this->userRepository = new UserRepository();
     }
     public function register()
     {

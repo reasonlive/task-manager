@@ -6,7 +6,6 @@ use App\Core\Auth\JwtService;
 use App\Core\Http\BaseController;
 use App\Core\Http\MiddlewareInterface;
 use App\Exceptions\UnauthorizedException;
-use App\Models\Model;
 use App\Models\User;
 
 class ApiAccessMiddleware implements MiddlewareInterface
@@ -22,7 +21,7 @@ class ApiAccessMiddleware implements MiddlewareInterface
 
                 $data = $instance->getPayload($token);
 
-                if (!$user = Model::getInstance(User::class)->find($data['user_id'])) {
+                if (!$user = User::load($data['user_id'])) {
                     throw new UnauthorizedException();
                 }
 
