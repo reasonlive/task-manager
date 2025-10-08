@@ -6,6 +6,7 @@ use App\Core\Data\DQL\Relationship\ManyToMany;
 use App\Core\Data\DQL\Relationship\ManyToOne;
 use App\Core\Data\DQL\Relationship\OneToMany;
 use App\Core\Data\DQL\Relationship\Relation;
+use App\Core\Data\ModelFactory;
 
 class Query
 {
@@ -39,7 +40,7 @@ class Query
     private array $buffer = [];
     private static bool $ENABLE_PDO_PREPARATION = false;
     private static bool $WHERE_CONDITION_STARTED = false;
-    private static bool $GROUPING_REQUIRED = false;
+    public static bool $GROUPING_REQUIRED = false;
     public function __construct(Operation $operation = Operation::SELECT)
     {
         $this->operation = $operation;
@@ -453,9 +454,9 @@ class Query
         return $this;
     }
 
-    public function setRelation(Relation $relation): static
+    public function setRelation(Relation $relation, string $joinType = self::LEFT_JOIN): static
     {
-        $relation->build($this->table);
+        $this->buffer[] = $relation->build($this->alias, $joinType)->sql();
         $this->relations[$relation->relation] = $relation;
 
         return $this;
@@ -489,6 +490,11 @@ class Query
                         $field = $aggregation->value . "($t.$fieldName)";
                     }
                     else if (is_array($fieldName)) {
+                        // empty $fieldName array for retrieving all fields
+                        if (empty($fieldName)) {
+                            $fieldName = ModelFactory::fields($table);
+                        }
+
                         $fieldsString = Aggregation::transformToJsonClause($fieldName, $t);
                         $field = $aggregation->value . "($fieldsString)";
                     }
