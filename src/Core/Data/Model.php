@@ -9,11 +9,10 @@ use App\Core\Data\DQL\Query;
  */
 abstract class Model
 {
+    protected static string $table = '';
     private static string $schemaPath;
     public static string $primaryKey = 'id';
     private Database $db;
-
-    protected ?string $table = null;
     protected array $fields;
 
     public function __construct(private bool $new = true)
@@ -21,16 +20,24 @@ abstract class Model
         self::$schemaPath = realpath(__DIR__ . '/../../../db/schema/');
         $this->db = Database::getInstance();
 
-        if ($data = @file_get_contents(self::$schemaPath . '/' . $this->table . '.schema')) {
+        if ($data = @file_get_contents(self::$schemaPath . '/' . static::$table . '.schema')) {
             $schema = unserialize($data);
             $this->fields = $schema->fields;
         }
         else {
-            $fields = $this->db->getTableFields($this->table);
-            $this->fields = array_fill_keys($fields, null);
+            $fields = $this->db->getTableFields(static::$table);
+            // attaching related objects
+            $related = [];
+            foreach ($fields as $field) {
+                if (str_ends_with($field, '_' . self::$primaryKey)) {
+                    $related[] = substr($field, 0, strpos($field, '_' . self::$primaryKey, 0));
+                }
+            }
+
+            $this->fields = array_fill_keys(array_merge($fields, $related), null);
 
             file_put_contents(
-                self::$schemaPath . '/' . $this->table . '.schema',
+                self::$schemaPath . '/' . static::$table . '.schema',
                 serialize($this),
             );
         }
@@ -48,8 +55,12 @@ abstract class Model
 
     public function __call($name, $arguments)
     {
-        if (is_null($this->table)) {
+        if (!static::$table) {
             throw new \Exception('Model table must be defined');
+        }
+
+        if (!array_key_exists($name, $this->fields)) {
+            throw new \Exception("Method $name does not exist");
         }
 
         if (count($arguments) == 1 && in_array($name, array_keys($this->fields))) {
@@ -69,7 +80,7 @@ abstract class Model
 
     public function getTable(): string
     {
-        return $this->table;
+        return static::$table;
     }
 
     /**
@@ -110,6 +121,43 @@ abstract class Model
 
         if ($data) {
             foreach ($data as $key => $value) {
+                // values might be for related model
+                if (is_array($value)) {
+                    // try to attach
+                    $reflection = new \ReflectionClass(static::class);
+                    $reflection->getProperty('fields')->setAccessible(true);
+
+                    $relatedKey = array_filter(
+                        array_keys($reflection->getProperty('fields')->getValue($instance)),
+                        fn($item) => str_contains($key, $item) && !str_ends_with($item, '_' . static::$primaryKey)
+                    );
+
+                    if (count($relatedKey) === 1) {
+                        $relatedKey = reset($relatedKey);
+                        $relatedClass = substr(
+                            $reflection->getName(),
+                            0,
+                            strrpos($reflection->getName(), '\\') + 1
+                        );
+
+                        // TODO: figure out how to obtain real class name
+                        if (class_exists($relatedClass . ucfirst($relatedKey))) {
+                            $reflection = new \ReflectionClass($relatedClass . ucfirst($relatedKey));
+                        }
+
+                        $reflection->setStaticPropertyValue('table', $key);
+                        $relation = $reflection->newInstance();
+
+                        foreach ($value as $k => $v) {
+                            $relation->{$k}($v);
+                        }
+                        // attach
+                        $instance->{$relatedKey}($relation);
+                    }
+
+                    continue;
+                }
+
                 $instance->{$key}($value);
             }
 
@@ -122,7 +170,7 @@ abstract class Model
     protected function insert(array $data = []): int
     {
         if (count($filtered = $this->filterFields($data))) {
-            $query = Query::insert($this->table);
+            $query = Query::insert(static::$table);
             foreach ($filtered as $field => $value) {
                 $query->setField($field, $value);
             }
@@ -138,7 +186,7 @@ abstract class Model
     protected function update(int $id, array $data = []): bool
     {
         if (count($filtered = $this->filterFields($data))) {
-            $query = Query::update($this->table);
+            $query = Query::update(static::$table);
 
             foreach ($filtered as $field => $value) {
                 $query->setField($field, $value);
@@ -154,7 +202,7 @@ abstract class Model
 
     public function delete(): int
     {
-        $query = Query::delete($this->table)
+        $query = Query::delete(static::$table)
             ->equals(self::$primaryKey, $this->fields[self::$primaryKey]);
         ;
 
