@@ -50,7 +50,7 @@ class ManyToMany extends Relation
         return $this;
     }
 
-    public function build(string $table, ?string $joinType = Query::LEFT_JOIN): static
+    public function build(string $alias, ?string $joinType = Query::LEFT_JOIN): static
     {
         if (!count($this->fks)) {
             throw new \Exception("Many-to-many foreign keys are required");
@@ -63,7 +63,7 @@ class ManyToMany extends Relation
 
         $this->alias = $alias2;
 
-        $this->sql .= "$joinType $this->mediator AS $alias3 ON $table.id = $alias3.$fk1 ";
+        $this->sql .= "$joinType $this->mediator AS $alias3 ON $alias.id = $alias3.$fk1 ";
         $this->sql .= "$joinType $this->relation AS $alias2 ON $alias3.$fk2 = $alias2.id";
 
         return $this;

@@ -16,13 +16,13 @@ class ManyToOne extends Relation
 
     /**
      * Builds join string
-     * @param string $table table name or table alias
+     * @param string $alias table name or table alias
      * @param string|null $joinType
      * @return $this
      */
-    public function build(string $table, ?string $joinType = null): static
+    public function build(string $alias, ?string $joinType = null): static
     {
-        $this->sql = "$joinType $this->relation AS $this->alias ON $table.$this->fk = $this->alias.id";
+        $this->sql = "$joinType $this->relation AS $this->alias ON $alias.$this->fk = $this->alias.id";
         return $this;
     }
 }

@@ -16,9 +16,9 @@ class OneToMany extends Relation
         $this->type = RelationType::ONE_TO_MANY;
     }
 
-    public function build(string $table, ?string $joinType = null): static
+    public function build(string $alias, ?string $joinType = null): static
     {
-        $this->sql = "$joinType $this->relation AS $this->alias ON $table.id = $this->alias.$this->fk";
+        $this->sql = "$joinType $this->relation AS $this->alias ON $alias.id = $this->alias.$this->fk";
         return $this;
     }
 }
