@@ -7,5 +7,5 @@ use App\Core\Data\DQL\Query;
 
 class Task extends \App\Core\Data\Model
 {
-    protected ?string $table = 'tasks';
+    protected static string $table = 'tasks';
 }
