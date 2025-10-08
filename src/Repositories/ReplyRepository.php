@@ -16,13 +16,10 @@ class ReplyRepository extends Repository
     /**
      * @param int $taskId
      * @return array
-     * @throws \Exception
      */
     public function findByTaskId(int $taskId): array
     {
-        $query = Query::select($this->table)->from()
-            ->equals('task_id', $taskId);
-
+        $query = Query::select($this->table)->from()->equals('task_id', $taskId);
         return $this->query($query, false);
     }
 }
