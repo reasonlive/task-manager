@@ -3,13 +3,22 @@
 namespace App\Controllers\Admin;
 
 use App\Core\Http\BaseController;
-use App\Models\Model;
 use App\Models\User;
+use App\Repositories\UserRepository;
 use App\Utils\PasswordHasher;
 
 class UserController extends BaseController
 {
     public bool $admin = true;
+
+    private UserRepository $userRepository;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->userRepository = new UserRepository();
+    }
+
     /**
      * GET /admin/users
      * @return void
@@ -37,7 +46,7 @@ class UserController extends BaseController
             $sortParams[] = $order ?? 'ASC';
         }
 
-        $users = Model::getInstance(User::class)->findAll($params, $sortParams);
+        $users = $this->userRepository->findAll();
 
         $this->render('admin/users/index.html.twig', ['users' => $users]);
     }
@@ -63,7 +72,7 @@ class UserController extends BaseController
         }
 
         // Проверяем, существует ли пользователь с таким email
-        $existingUser = Model::getInstance(User::class)
+        $existingUser = $this->userRepository
             ->findByEmail($data['email']);
         if ($existingUser) {
             $this->json(['success' => false, 'message' => 'User with this email already exists']);
@@ -82,8 +91,7 @@ class UserController extends BaseController
         ];
 
         // Создаем пользователя
-        $userId = Model::getInstance(User::class)
-            ->create($userData);
+        $userId = $this->userRepository->create($userData);
 
         if ($userId) {
             $this->json(['success' => true, 'message' => 'User created successfully']);
@@ -105,11 +113,11 @@ class UserController extends BaseController
             return;
         }
 
-        $repository = Model::getInstance(User::class);
+        $repository = $this->userRepository;
         $data = $this->request->getBody();
 
         // Проверяем существование пользователя
-        $user = $repository->findById($id);
+        $user = $repository->find($id);
         if (!$user) {
             $this->json(['success' => false, 'message' => 'User not found'], 404);
         }
@@ -152,8 +160,7 @@ class UserController extends BaseController
      */
     public function show(int $id): void
     {
-        $user = Model::getInstance(User::class)
-            ->findById($id);
+        $user = $this->userRepository->find($id);
 
         if ($user) {
             $this->render('admin/users/show.html.twig', ['user' => $user]);
@@ -167,7 +174,7 @@ class UserController extends BaseController
      */
     private function getFilteredUsers(?string $role, ?int $isActive): array
     {
-        $users = Model::getInstance(User::class)->findAll();
+        $users = $this->userRepository->findAll();
 
         // Применяем фильтры
         if ($role !== null) {
