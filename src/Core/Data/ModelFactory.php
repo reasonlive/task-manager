@@ -31,7 +31,7 @@ final class ModelFactory
         return [];
     }
 
-    private static function findModel(string $tableName): ?string
+    public static function findModel(string $tableName): ?string
     {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(realpath(__DIR__ . '/../../')));
         $models = [];
@@ -47,12 +47,17 @@ final class ModelFactory
             $iterator->next();
         }
 
-        $className = array_filter($models, fn ($model) => str_contains($tableName, strtolower($model)));
-
-        if (empty($className)) {
-            return null;
+        foreach ($models as $model) {
+            $className = "App\\Models\\" . $model;
+            if (class_exists($className)) {
+                $reflection = new \ReflectionClass($className);
+                $reflection->getProperty('table')->setAccessible(true);
+                if (strcasecmp($reflection->getProperty('table')->getValue(), $tableName) === 0) {
+                    return $className;
+                }
+            }
         }
 
-        return "App\\Models\\" . reset($className);
+        return null;
     }
 }

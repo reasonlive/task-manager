@@ -60,7 +60,29 @@ abstract class Model
         }
 
         if (!array_key_exists($name, $this->fields)) {
-            throw new \Exception("Method $name does not exist");
+            // this is related model class
+            if (($className = ModelFactory::findModel($name)) && $className !== static::class) {
+
+                $params = json_decode($arguments[0], true);
+                if (is_array($params)) {
+                    $objects = [];
+                    foreach ($params as $item) {
+                        $obj = new $className(false);
+                        foreach ($item as $k => $v) {
+                            $obj->$k($v);
+                        }
+
+                        $objects[] = $obj;
+                    }
+
+                    $this->fields[$name] = $objects;
+                }
+
+                return $this;
+            }
+            else {
+                throw new \Exception("Method $name does not exist");
+            }
         }
 
         if (count($arguments) == 1 && in_array($name, array_keys($this->fields))) {
@@ -134,15 +156,9 @@ abstract class Model
 
                     if (count($relatedKey) === 1) {
                         $relatedKey = reset($relatedKey);
-                        $relatedClass = substr(
-                            $reflection->getName(),
-                            0,
-                            strrpos($reflection->getName(), '\\') + 1
-                        );
 
-                        // TODO: figure out how to obtain real class name
-                        if (class_exists($relatedClass . ucfirst($relatedKey))) {
-                            $reflection = new \ReflectionClass($relatedClass . ucfirst($relatedKey));
+                        if ($relatedClass = ModelFactory::findModel($key)) {
+                            $reflection = new \ReflectionClass($relatedClass);
                         }
 
                         $reflection->setStaticPropertyValue('table', $key);
@@ -160,7 +176,7 @@ abstract class Model
 
                 $instance->{$key}($value);
             }
-
+            //print_r($instance);exit;
             return $instance;
         }
 
