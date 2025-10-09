@@ -5,7 +5,6 @@ namespace App\Controllers\Api;
 
 use App\Core\Http\BaseController;
 use App\Enums\Task\Status;
-use App\Models\Model;
 use App\Models\Task;
 use Exception;
 

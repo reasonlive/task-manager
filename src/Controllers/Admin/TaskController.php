@@ -4,26 +4,35 @@ namespace App\Controllers\Admin;
 
 use App\Core\Data\DQL\Relationship\ManyToMany;
 use App\Core\Data\DQL\Relationship\ManyToOne;
+use App\Core\Data\DQL\Relationship\Relation;
 use App\Core\Http\BaseController;
 use App\Enums\Task\Status as TaskStatus;
-use App\Models\Model;
 use App\Models\Reply;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\ReplyRepository;
+use App\Repositories\TagRepository;
 use App\Repositories\TaskRepository;
+use App\Repositories\UserRepository;
 
 class TaskController extends BaseController
 {
     public bool $admin = true;
-    private TaskRepository $taskRepository;
-    private ReplyRepository $replyRepository;
 
-    public function __construct() {
+    private TaskRepository $taskRepository;
+    private UserRepository $userRepository;
+    private ReplyRepository $replyRepository;
+    private TagRepository $tagRepository;
+
+    public function __construct(
+
+    ) {
         parent::__construct();
         $this->taskRepository = new TaskRepository();
+        $this->userRepository = new UserRepository();
         $this->replyRepository = new ReplyRepository();
+        $this->tagRepository = new TagRepository();
     }
 
     /**
@@ -39,14 +48,18 @@ class TaskController extends BaseController
         $sort = $this->request->get('sort', 'id');
         $order = strtoupper($this->request->get('order', 'DESC'));
 
-        $tasks = $this->taskRepository->findAll();
+        $tasks = $this->taskRepository
+            ->with(Relation::manyToOne('users', 'user_id'))
+            ->with(Relation::manyToMany('tags', 'task_tags', 'task_id', 'tag_id'))
+            ->findAll();
+
 
         $this->render('admin/tasks/index.html.twig', [
             'tasks' => $tasks,
             'statuses' => TaskStatus::names(),
             'total_pages' => ceil(count($tasks) / 10),
-            'available_users' => User::getInstance()->findByRole('MODERATOR'),
-            'available_tags' => array_map(fn($tag) => $tag['name'], Tag::getInstance()->findAll()),
+            'available_users' => $this->userRepository->findByRole('MODERATOR'),
+            'available_tags' => array_map(fn($tag) => $tag->name(), $this->tagRepository->findAll()),
             'sort_field' => $sort,
             'sort_order' => $order,
             'current_filters' => [
